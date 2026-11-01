@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Power Window ECU – End-to-End Verification (MIL / SIL / PIL / HIL)
 
 Learning and portfolio project: verifying a power window ECU with anti-pinch
@@ -36,3 +37,6 @@ SocketCAN · python-can · cantools · udsoncan · STM32 · GitHub Actions
 - [ ] CAN network + UDS diagnostics
 - [ ] PIL on STM32
 - [ ] Mini-HIL with fault injection
+=======
+# power-window-ecu-testing
+>>>>>>> 4fcd30d3200a94a28ba73058049c07065730fd35
