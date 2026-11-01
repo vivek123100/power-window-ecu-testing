@@ -1,0 +1,15 @@
+# Runs the SIL tests on every push. Activated in Step 2 (SIL).
+name: SIL tests
+on: [push, pull_request]
+jobs:
+  sil:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pytest
+      - name: Run SIL tests
+        run: |
+          if ls 02_SIL/tests/test_*.py 1> /dev/null 2>&1; then pytest 02_SIL/tests -v; else echo "No SIL tests yet"; fi

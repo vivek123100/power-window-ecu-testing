@@ -1,0 +1,20 @@
+# MATLAB/Simulink
+*.asv
+*.autosave
+slprj/
+*.slxc
+*_grt_rtw/
+# C build
+build/
+*.o
+*.out
+*.exe
+*.gcda
+*.gcno
+# Python
+__pycache__/
+.venv/
+.pytest_cache/
+# OS
+.DS_Store
+Thumbs.db
