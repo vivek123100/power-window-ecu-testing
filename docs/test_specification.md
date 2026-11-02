@@ -16,12 +16,12 @@ Techniques used: requirements-based testing, boundary value analysis, equivalenc
 | TC_10 | REQ_02 | Pos = 50 %, 12 V  | Press Down | Motor Down within 50 ms |
 | TC_11 | REQ_02, REQ_04 | Pos = 0% | Press Down | Motor stays off |
 | TC_12 | REQ_02 | Pos = 1 % | Press Down | Motor Down |
-| TC_13 | REQ_03 | Moving up, Pos 50 % | Release switch | Motor Stop within 50ms |
-| TC_14	| REQ_03 | Moving down, pos 50 % | Release switch |	Motor Stop within 50 ms |
+| TC_13 | REQ_03 | Moving up, Pos = 50 % | Release switch | Motor Stop within 50ms |
+| TC_14	| REQ_03 | Moving down, pos = 50 % | Release switch |	Motor Stop within 50 ms |
 | TC_15 | REQ_10 | Motor blocked (position not changing) |	Hold Up for 7.9 s |	Motor still running, no DTC |
 | TC_16	| REQ_10 |	Motor blocked | Hold Up for 8.1 s |	Motor Stop, DTC_MOTOR_OVERRUN stored |
 | TC_17 | REQ_12 |	ECU running | Measure status message for 10 s |	Cycle time 100 ms ±10 ms |
-| TC_18 | REQ_12 |	Moving up, pos 40 % | Read status message |	Position = 40 %, state = Up, pinch flag = 0 |
+| TC_18 | REQ_12 |	Moving up, pos =  40 % | Read status message |	Position = 40 %, state = Up, pinch flag = 0 |
 | TC_19 | REQ_12 | Pinch detected (as in TC_04) | Read status message |	Pinch flag = 1 |
 
 
