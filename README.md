@@ -10,15 +10,15 @@ up/down, stops at the end positions, and reverses the window if a pinch is
 detected while closing.
 
 ## Project structure
-| Folder | Test level | Status |
-|---|---|---|
-| `docs/` | Requirements, test specification, traceability | In progress |
-| `01_MIL/` | Model-in-the-Loop (Simulink/Stateflow) | Planned |
-| `02_SIL/` | Software-in-the-Loop (C code + pytest/Unity) | Planned |
-| `03_CAN/` | DBC file, ECU simulation (SocketCAN, python-can), UDS | Planned |
-| `04_PIL/` | Processor-in-the-Loop (STM32) | Planned |
-| `05_HIL/` | Mini-HIL with real-time plant model and fault injection | Planned |
-| `reports/` | Test reports | Planned |
+| Folder     | Test level                                              | Status      |
+| ---------- | ------------------------------------------------------- | ----------- |
+| `docs/`    | Requirements, test specification, traceability          | Done        |
+| `01_MIL/`  | Model-in-the-Loop (Simulink/Stateflow)                  | In progress |
+| `02_SIL/`  | Software-in-the-Loop (C code + pytest/Unity)            | Planned     |
+| `03_CAN/`  | DBC file, ECU simulation (SocketCAN, python-can), UDS   | Planned     |
+| `04_PIL/`  | Processor-in-the-Loop (STM32)                           | Planned     |
+| `05_HIL/`  | Mini-HIL with real-time plant model and fault injection | Planned     |
+| `reports/` | Test reports                                            | Planned     |
 
 ## Tools
 MATLAB/Simulink/Stateflow · C · Python · pytest · Unity · gcov · cppcheck (MISRA) ·
@@ -31,7 +31,7 @@ SocketCAN · python-can · cantools · udsoncan · STM32 · GitHub Actions
 
 ## Progress log
 - [x] Feature defined, 12 requirements written
-- [ ] Test specification complete
+- [x] Test specification complete
 - [ ] MIL model + test harness
 - [ ] SIL C implementation + back-to-back tests
 - [ ] CAN network + UDS diagnostics
