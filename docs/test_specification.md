@@ -24,5 +24,6 @@ Techniques used: requirements-based testing, boundary value analysis, equivalenc
 | TC_18 | REQ_12 |	Moving up, pos =  40 % | Read status message |	Position = 40 %, state = Up, pinch flag = 0 |
 | TC_19 | REQ_12 | Pinch detected (as in TC_04) | Read status message |	Pinch flag = 1 |
 | TC_20 | REQ_09 | Pinch reversal active (current = 8.1 A, pos = 50 %) | Switch message missing for 600 ms | Motor Stop, DTC_SwitchTimeout stored |
+| TC_21 | REQ_13, REQ_14 | Obstacle at = 70 %, pos = 50 % | Hold Up for the whole test | Pinch reversal to ~50 %, then motor stays 0 while Up is held; PinchFlag stays 1 |
 
 
