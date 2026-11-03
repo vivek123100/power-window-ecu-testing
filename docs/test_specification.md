@@ -23,6 +23,6 @@ Techniques used: requirements-based testing, boundary value analysis, equivalenc
 | TC_17 | REQ_12 |	ECU running | Measure status message for 10 s |	Cycle time 100 ms ±10 ms |
 | TC_18 | REQ_12 |	Moving up, pos =  40 % | Read status message |	Position = 40 %, state = Up, pinch flag = 0 |
 | TC_19 | REQ_12 | Pinch detected (as in TC_04) | Read status message |	Pinch flag = 1 |
-
+| TC_20 | REQ_09 | Pinch reversal active (current = 8.1 A, pos = 50 %) | Switch message missing for 600 ms | Motor Stop, DTC_SwitchTimeout stored |
 
 
