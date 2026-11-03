@@ -13,7 +13,7 @@ vehicle speed [km/h, via CAN], battery voltage [V]
 | REQ_03 | When the switch is released, the motor shall stop within 50 ms. |
 | REQ_04 | The motor shall stop when the position reaches 100 % (fully closed) or 0 % (fully open). |
 | REQ_05 | If motor current > 8 A while closing, between 4 % and 96 % position, the ECU shall detect a pinch. |
-| REQ_06 | After a pinch is detected, the window shall reverse (move down) by at least 20 % within 200 ms. |
+| REQ_06 | After a pinch is detected, the window shall start moving down within 200 ms and reverse by at least 20 %. |
 | REQ_07 | Anti-pinch shall be inactive above 96 % position. |
 | REQ_08 | If battery voltage < 9 V or > 16 V, the motor shall not run. |
 | REQ_09 | If the switch CAN message is missing for > 500 ms, the motor shall stop and DTC_SWITCH_TIMEOUT shall be stored. |
