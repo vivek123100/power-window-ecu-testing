@@ -13,8 +13,8 @@ detected while closing.
 | Folder     | Test level                                              | Status      |
 | ---------- | ------------------------------------------------------- | ----------- |
 | `docs/`    | Requirements, test specification, traceability          | Done        |
-| `01_MIL/`  | Model-in-the-Loop (Simulink/Stateflow)                  | In progress |
-| `02_SIL/`  | Software-in-the-Loop (C code + pytest/Unity)            | Planned     |
+| `01_MIL/`  | Model-in-the-Loop (Simulink/Stateflow)                  | Done |
+| `02_SIL/`  | Software-in-the-Loop (C code + pytest/Unity)            | In progress |
 | `03_CAN/`  | DBC file, ECU simulation (SocketCAN, python-can), UDS   | Planned     |
 | `04_PIL/`  | Processor-in-the-Loop (STM32)                           | Planned     |
 | `05_HIL/`  | Mini-HIL with real-time plant model and fault injection | Planned     |
