@@ -3,7 +3,7 @@
 
 Learning and portfolio project: verifying a power window ECU with anti-pinch
 protection across all test levels of the V-model.
-
+  **MIL status:** 19/19 executed test cases pass ([report](reports/MIL_test_report.md))
 ## Feature under test
 The driver operates the window via a switch (CAN). The ECU drives the motor
 up/down, stops at the end positions, and reverses the window if a pinch is
@@ -32,7 +32,7 @@ SocketCAN · python-can · cantools · udsoncan · STM32 · GitHub Actions
 ## Progress log
 - [x] Feature defined, 12 requirements written
 - [x] Test specification complete
-- [ ] MIL model + test harness
+- [x] MIL model + test harness
 - [ ] SIL C implementation + back-to-back tests
 - [ ] CAN network + UDS diagnostics
 - [ ] PIL on STM32
