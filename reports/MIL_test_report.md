@@ -1,6 +1,6 @@
 # MIL Test Report - Power Window ECU
 
-Generated: 05-Nov-2026 00:10:29  
+Generated: 05-Nov-2026 00:29:17  
 Model: PowerWindow_MIL.slx
 
 **20 of 20 executed test cases passed.**
@@ -10,7 +10,7 @@ Model: PowerWindow_MIL.slx
 | TC_01 | REQ_01 | Up pressed -> motor up within 50 ms | PASS | motor up after 0 ms (limit 50 ms) |
 | TC_02 | REQ_04 | Window stops at 100 % | PASS | at 4 s: Pos = 100.0 %, MotorCmd = 0 |
 | TC_03 | REQ_05 | Stall current 7.9 A -> no pinch | PASS | PinchFlag max = 0, reversal seen = 0 |
-| TC_04 | REQ_05, REQ_06 | Stall current 8.1 A -> pinch, reverse >= 20 % | PASS | reversal started 0 ms after stall (limit 200 ms), reversed 20.0 % |
+| TC_04 | REQ_05, REQ_06 | Stall current 8.1 A -> pinch, reverse >= 20 % | PASS | reversal started 10 ms after stall (limit 200 ms), reversed 20.0 % |
 | TC_05 | REQ_07 | Blocked above 96 % -> no reversal | PASS | reversal seen = 0 |
 | TC_06 | REQ_08 | Vbat 8.9 V -> motor stays off | PASS | MotorCmd min/max = 0 / 0 |
 | TC_07 | REQ_08 | Vbat 9.0 V -> motor up | PASS | motor up after 0 ms (limit 50 ms) |
