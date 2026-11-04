@@ -13,6 +13,6 @@
 | REQ_09 | TC_08 | Pass | – | – | – |
 | REQ_10 | TC_15, TC_16  | Pass | – | – | – |
 | REQ_11 | TC_09 | Pass | – | – | – |
-| REQ_12 | TC_17, TC_18, TC_19 | Pass | – | – | – |
+| REQ_12 | TC_17, TC_18, TC_19 | PASS (TC_19), N/A (TC_17, TC_18) | – | – | – |
 
 Legend: PASS / FAIL / – (not yet run)
