@@ -3,7 +3,7 @@
 
 Learning and portfolio project: verifying a power window ECU with anti-pinch
 protection across all test levels of the V-model.
-
+  **MIL status:** 19/19 executed test cases pass ([report](reports/MIL_test_report.md))
 ## Feature under test
 The driver operates the window via a switch (CAN). The ECU drives the motor
 up/down, stops at the end positions, and reverses the window if a pinch is
@@ -13,8 +13,8 @@ detected while closing.
 | Folder     | Test level                                              | Status      |
 | ---------- | ------------------------------------------------------- | ----------- |
 | `docs/`    | Requirements, test specification, traceability          | Done        |
-| `01_MIL/`  | Model-in-the-Loop (Simulink/Stateflow)                  | In progress |
-| `02_SIL/`  | Software-in-the-Loop (C code + pytest/Unity)            | Planned     |
+| `01_MIL/`  | Model-in-the-Loop (Simulink/Stateflow)                  | Done |
+| `02_SIL/`  | Software-in-the-Loop (C code + pytest/Unity)            | In progress |
 | `03_CAN/`  | DBC file, ECU simulation (SocketCAN, python-can), UDS   | Planned     |
 | `04_PIL/`  | Processor-in-the-Loop (STM32)                           | Planned     |
 | `05_HIL/`  | Mini-HIL with real-time plant model and fault injection | Planned     |
@@ -32,7 +32,7 @@ SocketCAN · python-can · cantools · udsoncan · STM32 · GitHub Actions
 ## Progress log
 - [x] Feature defined, 12 requirements written
 - [x] Test specification complete
-- [ ] MIL model + test harness
+- [x] MIL model + test harness
 - [ ] SIL C implementation + back-to-back tests
 - [ ] CAN network + UDS diagnostics
 - [ ] PIL on STM32
