@@ -21,4 +21,4 @@ vehicle speed [km/h, via CAN], battery voltage [V]
 | REQ_11 | If Up and Down are both active at the same time, the motor shall stop. |
 | REQ_12 | The ECU shall send its status (position, motor state, pinch flag) on CAN every 100 ms. |
 | REQ_13 | After a pinch reversal, the ECU shall not drive the window up until the Up switch has been released and pressed again. |
-| REQ_14 | The pinch flag in the status message shall stay set until the Up switch is released. |
+| REQ_14 | The pinch flag in the status message shall stay set until the Up switch is released.. |
