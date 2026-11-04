@@ -1,8 +1,9 @@
 function R = run_mil_tests()
 % RUN_MIL_TESTS  Automatic MIL test harness for the power window ECU.
 %   Runs every test case on PowerWindow_MIL.slx, checks the results
-%   against the requirements, prints a summary and writes
-%   reports/MIL_test_report.md.
+%   against the requirements, prints a summary, writes
+%   reports/MIL_test_report.md and saves every run as CSV in
+%   reports/b2b/mil/ (reference data for the SIL back-to-back test).
 %
 %   Usage (from the repo root or 01_MIL/tests):  R = run_mil_tests;
 
@@ -36,6 +37,7 @@ for i = 1:numel(tests)
 
         out = sim(in);
         r   = extractSignals(out);
+        exportCsv(r, tc.ID);                   % reference data for back-to-back
         [ok, msg] = tc.Check(r);
         if ok, res = "PASS"; else, res = "FAIL"; end
     catch err
@@ -104,6 +106,8 @@ tests(end+1) = makeTest("TC_20", "REQ_09", "Message lost during pinch reversal -
     "ObstacleActive", 1, "MsgAge", [0 0; 2 600]);
 tests(end+1) = makeTest("TC_21", "REQ_13, REQ_14", "Up held after pinch -> no re-closing", @chk_TC21, ...
     "ObstacleActive", 1);
+tests(end+1) = makeTest("TC_22", "REQ_09", "Message back while Up held -> no restart", @chk_TC22, ...
+    "SwUp", [0 0; 1 1; 6 0], "MsgAge", [0 0; 3 600; 5 0]);
 end
 
 function tc = makeTest(id, req, desc, check, varargin)
@@ -214,6 +218,13 @@ ok  = ~reclose && f == 1;
 msg = sprintf("re-closing after pinch = %d, PinchFlag at 5 s = %d", reclose, f);
 end
 
+function [ok, msg] = chk_TC22(r)
+restart = any(r.MotorCmd.v(r.MotorCmd.t > 3.1) ~= 0);
+d = valAt(r.DTC_SwitchTimeout, 11);
+ok  = ~restart && d == 1;
+msg = sprintf("motor moved after fault = %d, DTC at 11 s = %d", restart, d);
+end
+
 % =====================================================================
 %  HELPERS
 % =====================================================================
@@ -238,6 +249,18 @@ function t = firstT(s, cond, t0)
 % First time at or after t0 where cond(value) is true; Inf if never.
 idx = find(s.t >= t0 - 1e-6 & cond(s.v), 1, "first");
 if isempty(idx), t = Inf; else, t = s.t(idx); end
+end
+
+function exportCsv(r, id)
+% Save all logged signals of one test run as CSV (MIL reference for B2B).
+here = fileparts(mfilename("fullpath"));
+d = fullfile(here, "..", "..", "reports", "b2b", "mil");
+if ~isfolder(d), mkdir(d); end
+T = table(r.MotorCmd.t, r.MotorCmd.v, r.PinchFlag.v, r.DTC_SwitchTimeout.v, ...
+    r.DTC_MotorOverrun.v, r.Pos.v, r.Current.v, 'VariableNames', ...
+    ["t", "motor_cmd", "pinch_flag", "dtc_switch_timeout", ...
+     "dtc_motor_overrun", "pos", "current"]);
+writetable(T, fullfile(d, id + ".csv"));
 end
 
 function x = row(tc, res, msg)

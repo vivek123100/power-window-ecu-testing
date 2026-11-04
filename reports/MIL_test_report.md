@@ -1,9 +1,9 @@
 # MIL Test Report - Power Window ECU
 
-Generated: 04-Nov-2026 12:58:01  
+Generated: 05-Nov-2026 00:10:29  
 Model: PowerWindow_MIL.slx
 
-**19 of 19 executed test cases passed.**
+**20 of 20 executed test cases passed.**
 
 | TC | Requirement | Description | Result | Details |
 |---|---|---|---|---|
@@ -28,3 +28,4 @@ Model: PowerWindow_MIL.slx
 | TC_19 | REQ_12, REQ_14 | Pinch flag set during pinch | PASS | PinchFlag at 2.0 s = 1 |
 | TC_20 | REQ_09 | Message lost during pinch reversal -> stop + DTC | PASS | reversing at 1.95 s = 1, at 2.1 s: MotorCmd = 0, DTC = 1 |
 | TC_21 | REQ_13, REQ_14 | Up held after pinch -> no re-closing | PASS | re-closing after pinch = 0, PinchFlag at 5 s = 1 |
+| TC_22 | REQ_09 | Message back while Up held -> no restart | PASS | motor moved after fault = 0, DTC at 11 s = 1 |
