@@ -205,7 +205,7 @@ void WindowCtrl_Step(const WindowInputs_t *in, WindowOutputs_t *out)
 
         case WS_ERROR:
            
-            if(msg_ok(in->sw_msg_age_ms) && (in->sw_up) && (!in->sw_down))  /* recovery */
+            if(msg_ok(in->sw_msg_age_ms) && !in->sw_up && !in->sw_down)  /* recovery */
             {
                 s_out.pinch_flag = false;                     /* REQ_14 */
                 enter_state(WS_IDLE);     
