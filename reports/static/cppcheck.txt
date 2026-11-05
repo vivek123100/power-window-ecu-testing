@@ -1,0 +1,9 @@
+Checking 02_SIL/src/window_ctrl.c ...
+02_SIL/src/window_ctrl.c:63:6: style: The function 'WindowCtrl_Init' is never used. [unusedFunction]
+void WindowCtrl_Init(void)
+     ^
+02_SIL/src/window_ctrl.c:73:6: style: The function 'WindowCtrl_Step' is never used. [unusedFunction]
+void WindowCtrl_Step(const WindowInputs_t *in, WindowOutputs_t *out)
+     ^
+nofile:0:0: information: Active checkers: 113/975 (use --checkers-report=<filename> to see details) [checkersReport]
+
