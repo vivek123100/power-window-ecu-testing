@@ -13,9 +13,9 @@ detected while closing.
 | Folder     | Test level                                              | Status      |
 | ---------- | ------------------------------------------------------- | ----------- |
 | `docs/`    | Requirements, test specification, traceability          | Done        |
-| `01_MIL/`  | Model-in-the-Loop (Simulink/Stateflow)                  | Done |
-| `02_SIL/`  | Software-in-the-Loop (C code + pytest/Unity)            | In progress |
-| `03_CAN/`  | DBC file, ECU simulation (SocketCAN, python-can), UDS   | Planned     |
+| `01_MIL/`  | Model-in-the-Loop (Simulink/Stateflow)                  | Done        |
+| `02_SIL/`  | Software-in-the-Loop (C code + pytest/Unity)            | Done        |
+| `03_CAN/`  | DBC file, ECU simulation (SocketCAN, python-can), UDS   | In Progress |
 | `04_PIL/`  | Processor-in-the-Loop (STM32)                           | Planned     |
 | `05_HIL/`  | Mini-HIL with real-time plant model and fault injection | Planned     |
 | `reports/` | Test reports                                            | Planned     |
@@ -33,7 +33,7 @@ SocketCAN · python-can · cantools · udsoncan · STM32 · GitHub Actions
 - [x] Feature defined, 12 requirements written
 - [x] Test specification complete
 - [x] MIL model + test harness
-- [ ] SIL C implementation + back-to-back tests
+- [x] SIL C implementation + back-to-back tests
 - [ ] CAN network + UDS diagnostics
 - [ ] PIL on STM32
 - [ ] Mini-HIL with fault injection
