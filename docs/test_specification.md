@@ -42,6 +42,16 @@ Techniques used: requirements-based testing, boundary value analysis, equivalenc
 | TC_36 | REQ_03 | Moving down | At 2 s: Down released and Up pressed in the same cycle | Motor stops first (no direct reversal of direction) |
 | TC_37 | REQ_09 | CAN level, window moving up | BCM pauses: switch frames 500 ms apart (max message age 490 ms) | No timeout, no DTC | 
 | TC_38 | REQ_09 | CAN level, window moving up | BCM pauses: switch frames 560 ms apart (age reaches 510 ms) | Timeout, motor stops, DTC_SwitchTimeout set |
+| TC_39 | REQ_15 | CAN level, ECU idle | Tester: 22 F1 95 | 62 F1 95 "PW-1.0.0"; transferred as ISO-TP SF request, FF, FC, CF | 
+| TC_40 | REQ_15 | Window moving up from 30 % | Tester at 1.4 s: 22 01 00 | 62 01 00 + current position (about 40 %) | 
+| TC_41 | REQ_15 | ECU idle | Tester: 22 F1 FF (unknown DID) | 7F 22 31 (request out of range) | 
+| TC_42 | REQ_15 | No fault occurred | Tester: 19 02 FF | 59 02 09, no DTC records | 
+| TC_43 | REQ_09, REQ_15 | Switch message lost 2–3 s while moving | Tester at 4 s: 19 02 FF | DTC U0140-00 with status 08 (confirmed) | 
+| TC_44 | REQ_10, REQ_15 | Blocked motor (overrun) | Tester at 10 s: 19 02 FF | DTC B1310-00 with status 08 | 
+| TC_45 | REQ_16 | DTC U0140-00 stored | Tester: 19 02 FF, 14 FF FF FF, 19 02 FF | DTC present, then 54, then no DTC; status message DTC bit 0 | 
+| TC_46 | REQ_15 | ECU idle | 10 03 / 3E 00 | 50 03 00 32 01 F4 / 7E 00 | 
+| TC_47 | REQ_15 | ECU idle | 31 01 02 03 / 22 F1 / 10 02 | 7F 31 11 / 7F 22 13 / 7F 10 12 | 
+| TC_48 | REQ_15 | ECU idle | Three requests (22, 19, 3E) | Each response starts within 50 ms |
 
 
 ## Coverage justifications
@@ -84,5 +94,6 @@ Test levels per test case
 | SIL	| 02_SIL/tests/test_window_ctrl.py	| TC_01–TC_16, TC_19–TC_36 |
 | Back-to-back	| 02_SIL/tests/test_back_to_back.py	| all MIL test cases |
 | CAN (virtual bus)	| 03_CAN/tests/test_can.py | TC_08, TC_17, TC_18, TC_19, TC_37, TC_38 + DBC conformance + AliveCounter |
+| UDS (virtual bus) | 03_CAN/tests/test_uds.py | TC_39–TC_48 |
 
 Timing note (REQ_09): the timeout is detected 510 ms after the last message (first 10 ms check with age > 500 ms). Recommended requirement update: "detected within 500–520 ms".

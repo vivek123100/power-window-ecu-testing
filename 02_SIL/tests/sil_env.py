@@ -74,6 +74,9 @@ def load_library():
     lib.WindowCtrl_Init.restype = None
     lib.WindowCtrl_Step.argtypes = [ctypes.POINTER(Inputs), ctypes.POINTER(Outputs)]
     lib.WindowCtrl_Step.restype = None
+    if hasattr(lib, "WindowCtrl_ClearDtcs"):          # added in Step 3d (UDS 0x14)
+        lib.WindowCtrl_ClearDtcs.argtypes = []
+        lib.WindowCtrl_ClearDtcs.restype = None
     return lib
 
 

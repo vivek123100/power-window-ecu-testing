@@ -16,5 +16,7 @@
 | REQ_12 | TC_17, TC_18, TC_19 | PASS | – | – | – |  
 | REQ_13 | TC_31 | Pass | – | – | – |
 | REQ_14 | TC_30, TC_31 | Pass | – | – | – |
+| REQ_15 | TC_39, TC_40, TC_41, TC_42, TC_43, TC_44, TC_46, TC_47, TC_48 | – | – | – | – | 
+| REQ_16 | TC_45 | – | – | – | – |
 
 Legend: PASS / FAIL / – (not yet run)

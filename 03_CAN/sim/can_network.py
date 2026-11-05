@@ -7,6 +7,7 @@ Three nodes on a python-can *virtual* bus (no hardware needed):
           + the window plant. It decodes the switch message, works out
           SwMsgAge_ms from when the last message really arrived, runs the
           controller every 10 ms and sends DCU_WindowStatus every 100 ms.
+  tester  diagnostic tester (UDS over ISO-TP on 0x7E0 / 0x7E8), like a workshop tool
   logger  listens to everything, like candump / CANalyzer trace
 
 Time is simulated (10 ms steps), so every run is exactly repeatable.
@@ -22,6 +23,7 @@ import cantools
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "02_SIL" / "tests"))
 import sil_env  # noqa: E402  (C library, plant model, DT)
+import uds      # noqa: E402  (UDS server, tester, ISO-TP)
 
 DBC_FILE = ROOT / "03_CAN" / "dbc" / "power_window.dbc"
 DT = sil_env.DT
@@ -80,7 +82,12 @@ class DCU:
         self.next_tx = 0.0
         self.inp, self.out = sil_env.Inputs(), sil_env.Outputs()
         self.pos_prev, self.cur_prev = plant.p, 0.0
+        self.uds = uds.UdsServer(self)
         lib.WindowCtrl_Init()
+
+    def clear_dtcs(self):
+        """Called by UDS 0x14: clears the stored DTCs in the C controller."""
+        self.lib.WindowCtrl_ClearDtcs()
 
     def step(self, t, vbat):
         # 1. receive: decode every switch message that arrived
@@ -92,6 +99,10 @@ class DCU:
                 sig = self.rx_switch.decode(m.data)
                 self.sw_up, self.sw_down = bool(sig["SwUp"]), bool(sig["SwDown"])
                 self.last_rx_t = t
+            elif m.arbitration_id == uds.REQ_ID:                  # diagnostics
+                for frame in self.uds.on_frame(bytes(m.data)):
+                    self.bus.send(can.Message(arbitration_id=uds.RESP_ID, data=frame,
+                                              is_extended_id=False))
 
         age_ms = (NEVER_RECEIVED_MS if self.last_rx_t is None
                   else (t - self.last_rx_t) * 1000.0)
@@ -149,25 +160,41 @@ class CanTrace:
 
 def run_network(lib, stop_time=5.0, sw_up=((0, 0), (1, 1)), sw_down=((0, 0),),
                 vbat=12.0, bcm_silent=None, init_pos=50.0, obstacle_active=False,
-                obstacle_pos=70.0, stall_current=10.0):
+                obstacle_pos=70.0, stall_current=10.0, diag_requests=()):
     """Run the virtual network.
 
-    bcm_silent: (t_start, t_end) - the BCM stops sending in this window
-                (fault injection: lost CAN message, REQ_09).
+    bcm_silent:    (t_start, t_end) - the BCM stops sending in this window
+                   (fault injection: lost CAN message, REQ_09).
+    diag_requests: [(time, request_bytes), ...] sent by the diagnostic tester,
+                   e.g. [(1.0, bytes([0x22, 0xF1, 0x95]))]. Responses: tr.tester.log
     """
     db = load_dbc()
     channel = f"pw_vcan_{next(_channels)}"    # own channel per run: no cross-talk
-    buses = [can.Bus(interface="virtual", channel=channel) for _ in range(3)]
-    bcm_bus, dcu_bus, log_bus = buses
+    buses = [can.Bus(interface="virtual", channel=channel) for _ in range(4)]
+    bcm_bus, dcu_bus, log_bus, tester_bus = buses
     try:
         plant = sil_env.WindowPlant(init_pos, obstacle_active, obstacle_pos, stall_current)
         bcm, dcu = BCM(bcm_bus, db), DCU(dcu_bus, db, lib, plant)
+        tester = uds.Tester(list(diag_requests))
         tr = CanTrace(db)
+        tr.tester = tester
 
         for k in range(int(round(stop_time / DT)) + 1):
             t = round(k * DT, 2)
             silent = bcm_silent is not None and bcm_silent[0] <= t < bcm_silent[1]
             bcm.step(t, value_at(sw_up, t) > 0.5, value_at(sw_down, t) > 0.5, silent)
+
+            responses = []                    # tester: read 0x7E8, send 0x7E0
+            while True:
+                m = tester_bus.recv(timeout=0)
+                if m is None:
+                    break
+                if m.arbitration_id == uds.RESP_ID:
+                    responses.append(bytes(m.data))
+            for frame in tester.step(t, responses):
+                tester_bus.send(can.Message(arbitration_id=uds.REQ_ID, data=frame,
+                                            is_extended_id=False))
+
             age = dcu.step(t, vbat)
 
             while True:                       # logger: record all frames

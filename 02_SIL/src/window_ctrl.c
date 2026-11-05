@@ -70,6 +70,12 @@ void WindowCtrl_Init(void)
     enter_state(WS_IDLE);                /* default transition */
 }
 
+void WindowCtrl_ClearDtcs(void)
+{
+    s_out.dtc_switch_timeout = false;    /* REQ_16: UDS 0x14 */
+    s_out.dtc_motor_overrun  = false;
+}
+
 void WindowCtrl_Step(const WindowInputs_t *in, WindowOutputs_t *out)
 {
     if (s_ticks < UINT16_MAX)

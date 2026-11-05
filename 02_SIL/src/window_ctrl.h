@@ -44,5 +44,6 @@ typedef struct
 
 void WindowCtrl_Init(void);
 void WindowCtrl_Step(const WindowInputs_t *in, WindowOutputs_t *out);
+void WindowCtrl_ClearDtcs(void);   /* clear stored DTCs (UDS 0x14) */
 
 #endif /* WINDOW_CTRL_H */

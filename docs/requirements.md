@@ -22,3 +22,5 @@ vehicle speed [km/h, via CAN], battery voltage [V]
 | REQ_12 | The ECU shall send its status (position, motor state, pinch flag) on CAN every 100 ms. |
 | REQ_13 | After a pinch reversal, the ECU shall not drive the window up until the Up switch has been released and pressed again. |
 | REQ_14 | The pinch flag in the status message shall stay set until the Up switch is released.. |
+| REQ_15 | The ECU shall support UDS diagnostics (ISO 14229) over ISO-TP on CAN IDs 0x7E0 (request) / 0x7E8 (response): 0x10 sessions 01/03, 0x22 DIDs F195 (software version) and 0100 (window position), 0x19 sub-function 02, 0x14, 0x3E. Unsupported requests shall get a negative response (7F). Responses shall start within P2 = 50 ms. | 
+| REQ_16 | UDS 0x14 FF FF FF shall clear all stored DTCs, both in the diagnostic memory and in the status message. |
