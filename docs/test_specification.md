@@ -78,10 +78,11 @@ Note: TC_26 and TC_29 use sensor fault injection that exists only in the SIL pla
 | DEV_01 | 8.7 (advisory) | `WindowCtrl_Init`, `WindowCtrl_Step` | Public module interface declared in `window_ctrl.h`, called from other translation units (test harness, later the main loop). Making them `static` would break the module. Suppressed in `02_SIL/misra_suppressions.txt`. |
 
 Test levels per test case
-Level	Where	Test cases
-MIL	01_MIL/tests/run_mil_tests.m	TC_01–TC_16, TC_19–TC_22
-SIL	02_SIL/tests/test_window_ctrl.py	TC_01–TC_16, TC_19–TC_36
-Back-to-back	02_SIL/tests/test_back_to_back.py	all MIL test cases
-CAN (virtual bus)	03_CAN/tests/test_can.py	TC_08, TC_17, TC_18, TC_19, TC_37, TC_38 + DBC conformance + AliveCounter
+| Level	| Where |	Test cases | 
+|---|---|---|
+| MIL |	01_MIL/tests/run_mil_tests.m |	TC_01–TC_16, TC_19–TC_22 |
+| SIL	| 02_SIL/tests/test_window_ctrl.py	| TC_01–TC_16, TC_19–TC_36 |
+| Back-to-back	| 02_SIL/tests/test_back_to_back.py	| all MIL test cases |
+| CAN (virtual bus)	| 03_CAN/tests/test_can.py | TC_08, TC_17, TC_18, TC_19, TC_37, TC_38 + DBC conformance + AliveCounter |
 
 Timing note (REQ_09): the timeout is detected 510 ms after the last message (first 10 ms check with age > 500 ms). Recommended requirement update: "detected within 500–520 ms".
