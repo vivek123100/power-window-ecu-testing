@@ -3,7 +3,7 @@
 Every tool and method used in this project, where it was used, and the evidence in the repo.
 Status: ✅ used in the project · 🔧 set up, not used yet · 📅 planned
 
-_Last updated: 5 Nov 2026 (MIL and SIL complete; CI green)_
+_Last updated: 5 Nov 2026 (MIL, SIL and CAN/UDS complete)_
 
 ## Modelling & simulation
 | Tool | Status | What I did with it | Evidence |
@@ -42,9 +42,13 @@ _Last updated: 5 Nov 2026 (MIL and SIL complete; CI green)_
 ## Vehicle networks & diagnostics
 | Tool | Status | What I did with it | Evidence |
 |---|---|---|---|
-| CAN / DBC | 📅 | – | – |
-| SocketCAN, python-can, cantools | 📅 | – | – |
-| UDS (udsoncan, ISO-TP) | 📅 | – | – |
+| CAN / DBC | ✅ | Wrote a DBC (2 messages, signals with scaling, value tables, cycle times); decoded frames by hand (Intel byte order) | `03_CAN/dbc/power_window.dbc` |
+| python-can (virtual bus) | ✅ | 4-node virtual network: BCM, DCU (my C controller), diagnostic tester, logger; deterministic simulated time | `03_CAN/sim/can_network.py` |
+| cantools | ✅ | Encoding/decoding all frames from the DBC; DBC conformance test | `03_CAN/tests/test_can.py` |
+| candump log format | ✅ | Bus traces exported for CAN tools (e.g. SavvyCAN) | `reports/can/demo.log` |
+| ISO-TP (ISO 15765-2) | ✅ | Implemented single, first, consecutive and flow-control frames by hand | `03_CAN/sim/uds.py` |
+| UDS (ISO 14229) | ✅ | Diagnostic server in the ECU: 0x10, 0x22 (F195, 0100), 0x19 02, 0x14, 0x3E, negative responses; DTCs U0140-00 / B1310-00 | `03_CAN/sim/uds.py`, `03_CAN/tests/test_uds.py` |
+| SocketCAN / can-utils, udsoncan | 📅 | Planned for real hardware (PIL/HIL) | – |
 
 ## Hardware (PIL / HIL)
 | Tool | Status | What I did with it | Evidence |
@@ -58,7 +62,9 @@ _Last updated: 5 Nov 2026 (MIL and SIL complete; CI green)_
 | V-model / X-in-the-loop (MIL, SIL, PIL, HIL) | ✅ | Project structure; MIL complete |
 | Requirements engineering (testable "shall" requirements) | ✅ | 14 requirements in `docs/requirements.md` |
 | Requirements review | ✅ | Found an untestable requirement (REQ_06: physically impossible timing) and rewrote it |
-| Test specification | ✅ | 36 test cases in `docs/test_specification.md` |
+| Test specification | ✅ | 48 test cases across MIL, SIL, CAN and UDS in `docs/test_specification.md` |
+| Test-driven development | ✅ | UDS clear-DTC test written first (red), then the C function `WindowCtrl_ClearDtcs` (green) |
+| Communication fault testing | ✅ | Real message gaps on the bus: timeout boundary 500 vs 560 ms, 510 ms detection time measured |
 | Traceability (requirement ↔ test ↔ result) | ✅ | `docs/traceability.md` |
 | Boundary value analysis | ✅ | 7.9 / 8.1 A, 8.9 / 9.0 V, 7.9 / 8.1 s |
 | Fault injection | ✅ | CAN message timeout, motor overrun, low voltage, obstacle (pinch) |

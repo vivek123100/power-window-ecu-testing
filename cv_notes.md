@@ -2,7 +2,7 @@
 
 Ready-to-use CV text, updated after each milestone. Copy the latest version into your CV.
 
-_Last updated: 5 Nov 2026 (MIL and SIL complete)_
+_Last updated: 5 Nov 2026 (MIL, SIL, CAN/UDS complete)_
 
 ## Project entry (current version)
 
@@ -22,8 +22,10 @@ _Last updated: 5 Nov 2026 (MIL and SIL complete)_
 - Ran static analysis with cppcheck incl. the MISRA C:2012 addon (verified with a known-bad self-test); handled findings through a documented deviation process.
 - Built a GitHub Actions CI pipeline with quality gates on every push: MISRA check, 36 SIL tests, 20 back-to-back comparisons and a ≥ 90 % coverage gate, with downloadable reports.
 
+- Designed a DBC for the window ECU and built a virtual CAN network (python-can, cantools) with BCM, the ECU under test, a diagnostic tester and a bus logger; automated CAN tests for cycle time, signal content, DBC conformance and message-timeout boundaries.
+- Implemented UDS diagnostics (ISO 14229) over ISO-TP (ISO 15765-2): sessions, ReadDataByIdentifier, ReadDTCInformation, ClearDiagnosticInformation, TesterPresent and negative responses; 13 automated diagnostic tests incl. P2 response time.
+
 _Planned bullets (add when done):_
-- CAN/UDS: DBC-based network, simulated ECUs with python-can, UDS services 0x22/0x19.
 - PIL: code verified on STM32, execution time measured.
 - HIL: real-time plant ↔ MCU over CAN, automated fault-injection tests.
 
@@ -31,12 +33,13 @@ _Planned bullets (add when done):_
 
 **Testing:** V-model, MIL, requirements-based testing, test specification, traceability, boundary value analysis, fault injection, regression testing
 **Tools:** MATLAB, Simulink, Stateflow, C (C99), Python, pytest, gcc, gcov/gcovr, cppcheck, GitHub Actions, Linux (WSL), Git, GitHub, VS Code
+**Networks & diagnostics:** CAN, DBC, python-can, cantools, ISO-TP, UDS (0x10, 0x22, 0x19, 0x14, 0x3E), DTCs
 **Domain:** body electronics (power window, anti-pinch), basic functional safety awareness
 
 **Testing levels:** MIL, SIL, back-to-back (model vs. code)
 **Quality:** code coverage (gcov), static analysis (cppcheck, MISRA C:2012), CI/CD (GitHub Actions)
 
-_To add as the project goes on:_ CAN, DBC, UDS, STM32, PIL, HIL
+_To add as the project goes on:_ STM32, PIL, HIL
 
 ## Certificates
 - MATLAB Onramp (MathWorks)
@@ -51,4 +54,5 @@ _To add as the project goes on:_ CAN, DBC, UDS, STM32, PIL, HIL
 5. **Regression tests catch what reviews miss.** In code review I found that the ERROR recovery checked "Up pressed" instead of "Up released" (one missing `!`): the window would restart on its own after a fault. The comment was updated but the condition was not. The automated SIL tests (TC_16, TC_22) failed and pointed to it. Lesson: when code and comment disagree, trust the code, and never rely on review alone.
 6. **Back-to-back finds what functional tests miss.** Comparing every sample of MIL vs. SIL failed only for the 3 tests where the window did not start at 50 %, and only at t = 0. Cause: the model's feedback Unit Delay was still initialised to 50 % instead of the start position, so for the first 10 ms the controller saw the wrong window position (it could have driven a fully open window into the end stop at power-on). Fixed the initial condition and the logging point; result 100 % identical.
 7. **Test the test tool.** The MISRA check reported 0 findings on my code. Instead of trusting it, I ran it on a file with known violations: still 0. The addon's findings were hidden by default (severity "style" not enabled). After fixing the configuration it found 5 violations in the test file and 2 in my code (Rule 8.7, handled as a documented deviation). In ISO 26262 terms: tool confidence matters, a silent tool is not proof.
+8. **A requirement gap found while building a demo.** For the UDS demo I needed a stored "lost communication" DTC, but none appeared: the timeout is only checked while the window moves. Real ECUs usually store U0140 in any state. I documented it as an open requirement question for REQ_09 instead of quietly changing the code.
 4. **Test setup vs. product bug.** A failing test was caused by a hard-coded Constant block in the model, not by the controller. Lesson: always check the test setup first; keep inputs as variables so one model serves all test cases.
