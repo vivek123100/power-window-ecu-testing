@@ -26,5 +26,10 @@ Techniques used: requirements-based testing, boundary value analysis, equivalenc
 | TC_20 | REQ_09 | Pinch reversal active (current = 8.1 A, pos = 50 %) | Switch message missing for 600 ms | Motor Stop, DTC_SwitchTimeout stored |
 | TC_21 | REQ_13, REQ_14 | Obstacle at = 70 %, pos = 50 % | Hold Up for the whole test | Pinch reversal to ~50 %, then motor stays 0 while Up is held; PinchFlag stays 1 |
 | TC_22 | REQ_09 | ERROR after switch message lost (as TC_08), Up still held | Message returns at 5 s, Up released at 6 s | 5–6 s: motor stays 0 (no restart); after 6 s: state IDLE, no movement |
-| TC_22 | REQ_09 | ERROR after switch message lost (as TC_08), Up still held | Message returns at 5 s, Up released at 6 s | 5–6 s: motor stays 0 (no restart); after 6 s: state IDLE, no movement |
 
+| TC_23 | REQ_09 | ERROR after switch message lost (as TC_08), Up still held | Message returns at 5 s, Up released at 6 s | 5–6 s: motor stays 0 (no restart); after 6 s: state IDLE, no movement |
+
+## Coverage justifications
+| Code | Reason not covered |
+|---|---|
+| `default:` in `enter_state()` and `WindowCtrl_Step()` | Defensive code for an invalid state value; unreachable in normal operation. |
