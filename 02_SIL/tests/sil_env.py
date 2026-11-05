@@ -46,8 +46,19 @@ class Outputs(ctypes.Structure):
     ]
 
 
+_built = False
+
+
 def build_library(coverage=False):
-    """Compile window_ctrl.c into a shared library. Warnings are errors."""
+    """Compile window_ctrl.c into a shared library. Warnings are errors.
+
+    Builds only once per test session: SIL and CAN tests share the library
+    (rebuilding a library that is already loaded could crash the process).
+    """
+    global _built
+    if _built:
+        return
+    _built = True
     BUILD.mkdir(exist_ok=True)
     cmd = ["gcc", "-std=c99", "-Wall", "-Wextra", "-Werror",
            "-shared", "-fPIC", f"-I{SRC}", str(SRC / "window_ctrl.c"),

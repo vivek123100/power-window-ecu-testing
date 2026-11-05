@@ -20,9 +20,9 @@ Techniques used: requirements-based testing, boundary value analysis, equivalenc
 | TC_14	| REQ_03 | Moving down, pos = 50 % | Release switch |	Motor Stop within 50 ms |
 | TC_15 | REQ_10 | Motor blocked (position not changing) |	Hold Up for 7.9 s |	Motor still running, no DTC |
 | TC_16	| REQ_10 |	Motor blocked | Hold Up for 8.1 s |	Motor Stop, DTC_MOTOR_OVERRUN stored |
-| TC_17 | REQ_12 |	ECU running | Measure status message for 10 s |	Cycle time 100 ms ±10 ms |
-| TC_18 | REQ_12 |	Moving up, pos =  40 % | Read status message |	Position = 40 %, state = Up, pinch flag = 0 |
-| TC_19 | REQ_12 | Pinch detected (as in TC_04) | Read status message |	Pinch flag = 1 |
+| TC_17 | REQ_12 | CAN level (virtual bus), ECU running | Record DCU_WindowStatus (0x210) for 10 s | Cycle time 100 ms ±10 ms for every frame |
+| TC_18 | REQ_12 | CAN level, window moving up from 30 % | Read DCU_WindowStatus at 1.4 s | WindowPos = real position (±0.5 %, about 40 %), MotorState Up, PinchFlag 0, CtrlState MOVING_UP, no DTC |
+| TC_19 | REQ_12, REQ_14 | Pinch detected (as in TC_04) | Read status message |	Pinch flag = 1 |
 | TC_20 | REQ_09 | Pinch reversal active (current = 8.1 A, pos = 50 %) | Switch message missing for 600 ms | Motor Stop, DTC_SwitchTimeout stored |
 | TC_21 | REQ_13, REQ_14 | Obstacle at = 70 %, pos = 50 % | Hold Up for the whole test | Pinch reversal to ~50 %, then motor stays 0 while Up is held; PinchFlag stays 1 |
 | TC_22 | REQ_09 | ERROR after switch message lost (as TC_08), Up still held | Message returns at 5 s, Up released at 6 s | 5–6 s: motor stays 0 (no restart); after 6 s: state IDLE, no movement |
@@ -40,6 +40,9 @@ Techniques used: requirements-based testing, boundary value analysis, equivalenc
 | TC_34 | REQ_05 | Window at 2 %, obstacle at 3 % | Hold Up | Blocked at 3 % (below pinch zone): no pinch, no reversal | 
 | TC_35 | REQ_06 | Window at 5 %, obstacle at 10 % | Hold Up | Pinch at 10 %, reversal ends at 0 % (less than 20 % available), motor stops | 
 | TC_36 | REQ_03 | Moving down | At 2 s: Down released and Up pressed in the same cycle | Motor stops first (no direct reversal of direction) |
+| TC_37 | REQ_09 | CAN level, window moving up | BCM pauses: switch frames 500 ms apart (max message age 490 ms) | No timeout, no DTC | 
+| TC_38 | REQ_09 | CAN level, window moving up | BCM pauses: switch frames 560 ms apart (age reaches 510 ms) | Timeout, motor stops, DTC_SwitchTimeout set |
+
 
 ## Coverage justifications
 | Code | Reason not covered |
@@ -73,3 +76,13 @@ Note: TC_26 and TC_29 use sensor fault injection that exists only in the SIL pla
 | ID | Rule | Location | Justification |
 |---|---|---|---|
 | DEV_01 | 8.7 (advisory) | `WindowCtrl_Init`, `WindowCtrl_Step` | Public module interface declared in `window_ctrl.h`, called from other translation units (test harness, later the main loop). Making them `static` would break the module. Suppressed in `02_SIL/misra_suppressions.txt`. |
+
+
+Test levels per test case
+Level	Where	Test cases
+MIL	01_MIL/tests/run_mil_tests.m	TC_01–TC_16, TC_19–TC_22
+SIL	02_SIL/tests/test_window_ctrl.py	TC_01–TC_16, TC_19–TC_36
+Back-to-back	02_SIL/tests/test_back_to_back.py	all MIL test cases
+CAN (virtual bus)	03_CAN/tests/test_can.py	TC_08, TC_17, TC_18, TC_19, TC_37, TC_38 + DBC conformance + AliveCounter
+
+Timing note (REQ_09): the timeout is detected 510 ms after the last message (first 10 ms check with age > 500 ms). Recommended requirement update: "detected within 500–520 ms".

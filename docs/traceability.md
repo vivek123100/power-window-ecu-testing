@@ -10,10 +10,10 @@
 | REQ_06 | TC_04, TC_35 | Pass | – | – | – |
 | REQ_07 | TC_05 | Pass | – | – | – |
 | REQ_08 | TC_06, TC_07, TC_23, TC_27, TC_30, TC_33 | Pass | – | – | – |
-| REQ_09 | TC_08, TC_25, TC_32 | Pass | – | – | – |
+| REQ_09 | TC_08, TC_25, TC_32, TC_38 | Pass | – | – | – |
 | REQ_10 | TC_15, TC_16, TC_26, TC_29  | Pass | – | – | – |
 | REQ_11 | TC_09, TC_24, TC_28 | Pass | – | – | – |
-| REQ_12 | TC_17, TC_18, TC_19 | PASS (TC_19), N/A (TC_17, TC_18) | – | – | – |  
+| REQ_12 | TC_17, TC_18, TC_19 | PASS | – | – | – |  
 | REQ_13 | TC_31 | Pass | – | – | – |
 | REQ_14 | TC_30, TC_31 | Pass | – | – | – |
 
