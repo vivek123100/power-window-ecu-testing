@@ -3,7 +3,7 @@
 Run from the repo root:   pytest 02_SIL/tests -v
 """
 import pytest
-from sil_env import simulate, ERROR, IDLE
+from sil_env import simulate, ERROR, IDLE, PINCH_REVERSE
 
 UP_AT_1 = ((0, 0), (1, 1))
 DOWN_AT_1 = ((0, 0), (1, 1))
@@ -142,3 +142,119 @@ def test_TC_22_error_recovery_needs_release(ctrl):
     assert tr.val_at("state", 5.5) == ERROR, "left ERROR while Up still held"
     assert 1 not in tr.values("motor_cmd", after=3.1), "window moved again after the fault"
     assert tr.val_at("state", 6.1) == IDLE, "stuck in ERROR after release"
+
+
+# ------------------------------------------------------------------------
+# TC_23 - TC_31: added after coverage analysis (Step 2e). Each one tests a
+# fault in a state where no earlier test reached it.
+# ------------------------------------------------------------------------
+DOWN_FROM_1 = dict(sw_up=NEVER, sw_down=DOWN_AT_1)
+
+
+def assert_stops_at(tr, t_fault, state=None):
+    """Motor running just before the fault, stopped within 50 ms after it."""
+    assert tr.val_at("motor_cmd", t_fault - 0.05) != 0, "motor not running before the fault"
+    t = tr.first_t("motor_cmd", lambda v: v == 0, t_fault)
+    assert t is not None and t - t_fault <= 0.05, f"stopped {t} (fault at {t_fault})"
+    if state is not None:
+        assert tr.val_at("state", t_fault + 0.1) == state
+
+
+def test_TC_23_undervoltage_while_moving_up(ctrl):
+    """REQ_08: Vbat drops to 8.5 V at 2 s while closing"""
+    tr = simulate(ctrl, vbat=((0, 12.0), (2, 8.5)))
+    assert_stops_at(tr, 2.0, IDLE)
+
+
+def test_TC_24_up_and_down_while_moving_up(ctrl):
+    """REQ_11: Down also pressed at 2 s while closing"""
+    tr = simulate(ctrl, sw_down=((0, 0), (2, 1)))
+    assert_stops_at(tr, 2.0, IDLE)
+
+
+def test_TC_25_msg_lost_while_moving_down(ctrl):
+    """REQ_09: switch message lost at 1.5 s while opening"""
+    tr = simulate(ctrl, msg_age=((0, 0), (1.5, 600)), **DOWN_FROM_1)
+    assert_stops_at(tr, 1.5, ERROR)
+    assert tr.val_at("dtc_switch_timeout", 1.6) == 1
+
+
+def test_TC_26_overrun_while_moving_down(ctrl):
+    """REQ_10: position sensor stuck at 1.5 s (fault injection) -> motor runs on -> overrun"""
+    tr = simulate(ctrl, pos_stuck_from=1.5, **DOWN_FROM_1)
+    assert tr.val_at("motor_cmd", 8.9) == -1, "stopped before 8 s"
+    assert tr.val_at("dtc_motor_overrun", 8.9) == 0
+    assert tr.val_at("motor_cmd", 9.1) == 0
+    assert tr.val_at("dtc_motor_overrun", 9.1) == 1
+
+
+def test_TC_27_overvoltage_while_moving_down(ctrl):
+    """REQ_08: Vbat rises to 16.5 V at 2 s while opening"""
+    tr = simulate(ctrl, vbat=((0, 12.0), (2, 16.5)), **DOWN_FROM_1)
+    assert_stops_at(tr, 2.0, IDLE)
+
+
+def test_TC_28_up_and_down_while_moving_down(ctrl):
+    """REQ_11: Up also pressed at 2 s while opening"""
+    tr = simulate(ctrl, sw_up=((0, 0), (2, 1)), sw_down=DOWN_AT_1)
+    assert_stops_at(tr, 2.0, IDLE)
+
+
+def test_TC_29_overrun_during_pinch_reversal(ctrl):
+    """REQ_10: position sensor stuck during reversal -> reversal never ends -> overrun"""
+    tr = simulate(ctrl, obstacle_active=True, pos_stuck_from=1.9)
+    t_rev = tr.first_t("state", lambda v: v == PINCH_REVERSE)
+    assert t_rev is not None, "no pinch reversal"
+    assert tr.val_at("motor_cmd", t_rev + 7.9) == -1, "stopped before 8 s"
+    assert tr.val_at("motor_cmd", t_rev + 8.1) == 0
+    assert tr.val_at("dtc_motor_overrun", t_rev + 8.1) == 1
+
+
+def test_TC_30_undervoltage_during_pinch_reversal(ctrl):
+    """REQ_08, REQ_14: Vbat drops to 8.5 V at 2.0 s while reversing"""
+    tr = simulate(ctrl, obstacle_active=True, vbat=((0, 12.0), (2, 8.5)))
+    assert_stops_at(tr, 2.0, IDLE)
+    assert tr.val_at("pinch_flag", 2.1) == 0, "pinch flag must be cleared when leaving to IDLE"
+
+
+def test_TC_31_release_after_pinch_unlocks_window(ctrl):
+    """REQ_13, REQ_14: Up released at 4 s after pinch, pressed again at 5 s"""
+    tr = simulate(ctrl, obstacle_active=True, sw_up=((0, 0), (1, 1), (4, 0), (5, 1)))
+    assert tr.val_at("pinch_flag", 3.9) == 1
+    assert tr.val_at("pinch_flag", 4.1) == 0, "flag not cleared on release"
+    assert tr.val_at("state", 4.1) == IDLE
+    t = tr.first_t("motor_cmd", lambda v: v == 1, 5.0)
+    assert t is not None and t - 5.0 <= 0.05, "window does not close again after a new press"
+
+
+# TC_32 - TC_36: branch coverage (each condition inside a transition both ways)
+@pytest.mark.parametrize("tc, kwargs", [
+    ("TC_32 switch message missing from start (REQ_09)", dict(msg_age=((0, 600),))),
+    ("TC_33 Vbat 16.5 V from start (REQ_08)", dict(vbat=((0, 16.5),))),
+    ("TC_33b Vbat 16.5 V, Down (REQ_08)", dict(vbat=((0, 16.5),), **DOWN_FROM_1)),
+    ("TC_32b message missing, Down (REQ_09)", dict(msg_age=((0, 600),), **DOWN_FROM_1)),
+])
+def test_no_start_with_fault_present(ctrl, tc, kwargs):
+    tr = simulate(ctrl, **kwargs)
+    assert set(tr.values("motor_cmd")) == {0}, tc
+
+
+def test_TC_34_no_pinch_below_4_percent(ctrl):
+    """REQ_05 lower limit: blocked at 3 % while closing -> no pinch (seal zone)"""
+    tr = simulate(ctrl, init_pos=2, obstacle_active=True, obstacle_pos=3)
+    assert max(tr.values("pinch_flag")) == 0
+    assert -1 not in tr.values("motor_cmd")
+
+
+def test_TC_35_pinch_near_bottom_reverses_to_0(ctrl):
+    """REQ_06: pinch at 10 % -> reversal ends at 0 % (less than 20 % available)"""
+    tr = simulate(ctrl, init_pos=5, obstacle_active=True, obstacle_pos=10)
+    assert max(tr.values("pinch_flag")) == 1
+    assert tr.val_at("pos", 4.0) == 0.0
+    assert tr.val_at("motor_cmd", 4.0) == 0, "motor must stop at 0 %"
+
+
+def test_TC_36_switch_from_down_to_up(ctrl):
+    """REQ_03: Down released and Up pressed in the same cycle -> stop first"""
+    tr = simulate(ctrl, sw_up=((0, 0), (2, 1)), sw_down=((0, 0), (1, 1), (2, 0)))
+    assert tr.val_at("motor_cmd", 2.0) == 0, "must stop before changing direction"

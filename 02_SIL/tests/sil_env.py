@@ -117,12 +117,18 @@ def value_at(table, t):
 
 def simulate(lib, stop_time=12.0, sw_up=((0, 0), (1, 1)), sw_down=((0, 0),),
              vbat=((0, 12.0),), msg_age=((0, 0.0),), init_pos=50.0,
-             obstacle_active=False, obstacle_pos=70.0, stall_current=10.0):
-    """Run one closed-loop test and return a Trace."""
+             obstacle_active=False, obstacle_pos=70.0, stall_current=10.0,
+             pos_stuck_from=None):
+    """Run one closed-loop test and return a Trace.
+
+    pos_stuck_from: fault injection - from this time on, the position sensor
+    freezes at its last value (the window still moves physically).
+    """
     plant = WindowPlant(init_pos, obstacle_active, obstacle_pos, stall_current)
     pos_prev, cur_prev = float(init_pos), 0.0               # Unit Delay states
     inp, out = Inputs(), Outputs()
     tr = Trace()
+    stuck_value = None
 
     lib.WindowCtrl_Init()
     for k in range(int(round(stop_time / DT)) + 1):
@@ -132,6 +138,10 @@ def simulate(lib, stop_time=12.0, sw_up=((0, 0), (1, 1)), sw_down=((0, 0),),
         inp.vbat_v = value_at(vbat, t)
         inp.sw_msg_age_ms = value_at(msg_age, t)
         inp.pos_pct = pos_prev
+        if pos_stuck_from is not None and t >= pos_stuck_from - 1e-9:
+            if stuck_value is None:
+                stuck_value = pos_prev
+            inp.pos_pct = stuck_value                       # sensor stuck
         inp.current_a = cur_prev
 
         lib.WindowCtrl_Step(ctypes.byref(inp), ctypes.byref(out))
