@@ -12,10 +12,17 @@ Three nodes on a python-can *virtual* bus (no hardware needed):
 
 Time is simulated (10 ms steps), so every run is exactly repeatable.
 Messages are encoded/decoded with cantools from 03_CAN/dbc/power_window.dbc.
+
+Bus choice (environment variables):
+  default                    python-can "virtual" bus inside this program (tests, CI)
+  CAN_INTERFACE=socketcan    Linux SocketCAN, channel CAN_CHANNEL (default vcan0):
+                             candump / cansend / Wireshark see the traffic
 """
 import itertools
+import os
 import pathlib
 import sys
+import time
 
 import can
 import cantools
@@ -30,6 +37,16 @@ DT = sil_env.DT
 NEVER_RECEIVED_MS = 1.0e6                     # before the first switch message
 MOTOR_STATE = {0: 0, 1: 1, -1: 2}             # motor_cmd -> DBC MotorState
 _channels = itertools.count()
+
+
+def make_buses(n):
+    """Create n bus connections that all see each other's frames."""
+    interface = os.environ.get("CAN_INTERFACE", "virtual")
+    if interface == "virtual":
+        channel = f"pw_vcan_{next(_channels)}"    # own channel per run: no cross-talk
+    else:
+        channel = os.environ.get("CAN_CHANNEL", "vcan0")
+    return [can.Bus(interface=interface, channel=channel) for _ in range(n)]
 
 
 def load_dbc():
@@ -160,17 +177,22 @@ class CanTrace:
 
 def run_network(lib, stop_time=5.0, sw_up=((0, 0), (1, 1)), sw_down=((0, 0),),
                 vbat=12.0, bcm_silent=None, init_pos=50.0, obstacle_active=False,
-                obstacle_pos=70.0, stall_current=10.0, diag_requests=()):
+                obstacle_pos=70.0, stall_current=10.0, diag_requests=(),
+                bcm_enabled=True, realtime=False, on_status=None):
     """Run the virtual network.
 
     bcm_silent:    (t_start, t_end) - the BCM stops sending in this window
                    (fault injection: lost CAN message, REQ_09).
     diag_requests: [(time, request_bytes), ...] sent by the diagnostic tester,
                    e.g. [(1.0, bytes([0x22, 0xF1, 0x95]))]. Responses: tr.tester.log
+    bcm_enabled:   False = no simulated BCM; switch frames must come from outside
+                   (e.g. cansend on vcan0)
+    realtime:      True = wait 10 ms per step (for live SocketCAN demos)
+    on_status:     optional callback(t, decoded_status) for every status frame sent
     """
     db = load_dbc()
-    channel = f"pw_vcan_{next(_channels)}"    # own channel per run: no cross-talk
-    buses = [can.Bus(interface="virtual", channel=channel) for _ in range(4)]
+    status_msg = db.get_message_by_name("DCU_WindowStatus")
+    buses = make_buses(4)
     bcm_bus, dcu_bus, log_bus, tester_bus = buses
     try:
         plant = sil_env.WindowPlant(init_pos, obstacle_active, obstacle_pos, stall_current)
@@ -179,9 +201,13 @@ def run_network(lib, stop_time=5.0, sw_up=((0, 0), (1, 1)), sw_down=((0, 0),),
         tr = CanTrace(db)
         tr.tester = tester
 
+        t_start = time.monotonic()
         for k in range(int(round(stop_time / DT)) + 1):
             t = round(k * DT, 2)
-            silent = bcm_silent is not None and bcm_silent[0] <= t < bcm_silent[1]
+            if realtime:                      # keep pace with the wall clock
+                time.sleep(max(0.0, t_start + t - time.monotonic()))
+            silent = (not bcm_enabled or
+                      (bcm_silent is not None and bcm_silent[0] <= t < bcm_silent[1]))
             bcm.step(t, value_at(sw_up, t) > 0.5, value_at(sw_down, t) > 0.5, silent)
 
             responses = []                    # tester: read 0x7E8, send 0x7E0
@@ -202,6 +228,8 @@ def run_network(lib, stop_time=5.0, sw_up=((0, 0), (1, 1)), sw_down=((0, 0),),
                 if m is None:
                     break
                 tr.frames.append((t, m.arbitration_id, bytes(m.data)))
+                if on_status is not None and m.arbitration_id == status_msg.frame_id:
+                    on_status(t, status_msg.decode(bytes(m.data), decode_choices=False))
             tr.ecu.append((t, dcu.out.motor_cmd, dcu.out.state, dcu.pos_prev, age))
         return tr
     finally:

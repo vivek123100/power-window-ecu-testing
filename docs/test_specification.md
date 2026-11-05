@@ -71,16 +71,12 @@ Reason: Only reached after > 655 s in one state (e.g. long IDLE). Protects again
 
 Note: TC_26 and TC_29 use sensor fault injection that exists only in the SIL plant (pos_stuck_from). They are SIL-only until the MIL plant gets the same fault input.
 
-## Static analysis
-- cppcheck (`--enable=all`): no findings except `unusedFunction` for WindowCtrl_Init/Step (called from the test harness; expected).
-- cppcheck MISRA C:2012 addon: 0 findings. Addon verified with a self-test file containing known violations (Rules 7.1, 15.1).
-- Note: cppcheck covers a subset of MISRA rules; a commercial tool (e.g. Polyspace, QA-C) would be needed for a full compliance claim.
 
 
 ## Static analysis
 - cppcheck (`--enable=all`): no findings except `unusedFunction` for WindowCtrl_Init/Step (called from the test harness; expected).
 - cppcheck MISRA C:2012 addon (`--enable=style`): 2 findings, both Rule 8.7 (advisory) -> deviation below. Addon verified with a self-test file containing known violations (Rules 7.1, 8.4, 14.4, 15.1, 15.6).
-- Note: cppcheck covers a subset of MISRA rules; a full compliance claim would need a commercial tool (e.g. Polyspace, QA-C).
+- Note: cppcheck covers a subset of MISRA rules; a full compliance claim would need a commercial tool (e.g. Polyspace, QA-C) would be needed for a full compliance claim.
 
 ### MISRA deviations
 | ID | Rule | Location | Justification |
