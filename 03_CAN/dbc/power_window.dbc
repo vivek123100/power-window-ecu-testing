@@ -1,0 +1,45 @@
+VERSION ""
+
+
+NS_ :
+	NS_DESC_
+	CM_
+	BA_DEF_
+	BA_
+	VAL_
+	BA_DEF_DEF_
+
+BS_:
+
+BU_: BCM DCU
+
+
+BO_ 512 BCM_WindowSwitch: 2 BCM
+ SG_ SwUp : 0|1@1+ (1,0) [0|1] "" DCU
+ SG_ SwDown : 1|1@1+ (1,0) [0|1] "" DCU
+ SG_ AliveCounter : 8|4@1+ (1,0) [0|15] "" DCU
+
+BO_ 528 DCU_WindowStatus: 4 DCU
+ SG_ WindowPos : 0|8@1+ (0.5,0) [0|100] "%" BCM
+ SG_ MotorState : 8|2@1+ (1,0) [0|2] "" BCM
+ SG_ PinchFlag : 10|1@1+ (1,0) [0|1] "" BCM
+ SG_ DTC_SwitchTimeout : 11|1@1+ (1,0) [0|1] "" BCM
+ SG_ DTC_MotorOverrun : 12|1@1+ (1,0) [0|1] "" BCM
+ SG_ CtrlState : 16|3@1+ (1,0) [0|5] "" BCM
+
+
+CM_ BU_ BCM "Body control module: reads the door switch and sends the request";
+CM_ BU_ DCU "Door control unit: the power window ECU under test";
+CM_ BO_ 512 "Window switch request from the BCM, every 20 ms";
+CM_ BO_ 528 "Window status from the DCU, every 100 ms (REQ_12)";
+CM_ SG_ 512 AliveCounter "Increments 0..15 with every message, so the receiver can detect frozen senders";
+CM_ SG_ 528 WindowPos "Window position, 0 = fully open, 100 = fully closed";
+CM_ SG_ 528 CtrlState "Active state of the controller (for testing and diagnosis)";
+
+BA_DEF_ BO_ "GenMsgCycleTime" INT 0 10000;
+BA_DEF_DEF_ "GenMsgCycleTime" 0;
+BA_ "GenMsgCycleTime" BO_ 512 20;
+BA_ "GenMsgCycleTime" BO_ 528 100;
+
+VAL_ 528 MotorState 0 "Stop" 1 "Up" 2 "Down" ;
+VAL_ 528 CtrlState 0 "IDLE" 1 "MOVING_UP" 2 "MOVING_DOWN" 3 "PINCH_REVERSE" 4 "WAIT_RELEASE" 5 "ERROR" ;
