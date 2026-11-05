@@ -77,7 +77,6 @@ Note: TC_26 and TC_29 use sensor fault injection that exists only in the SIL pla
 |---|---|---|---|
 | DEV_01 | 8.7 (advisory) | `WindowCtrl_Init`, `WindowCtrl_Step` | Public module interface declared in `window_ctrl.h`, called from other translation units (test harness, later the main loop). Making them `static` would break the module. Suppressed in `02_SIL/misra_suppressions.txt`. |
 
-
 Test levels per test case
 Level	Where	Test cases
 MIL	01_MIL/tests/run_mil_tests.m	TC_01–TC_16, TC_19–TC_22
