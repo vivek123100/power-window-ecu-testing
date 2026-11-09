@@ -9,7 +9,7 @@ cppcheck --addon=misra --enable=style --std=c99 --suppress=missingIncludeSystem 
   --suppressions-list=02_SIL/misra_suppressions.txt \
   --error-exitcode=1 -I 02_SIL/src 02_SIL/src/window_ctrl.c 2>&1 | tee reports/static/misra.txt
 
-echo "=== 2/4 SIL + CAN tests + back-to-back (with coverage) ==="
+echo "=== 2/4 SIL + CAN + UDS tests + back-to-back (with coverage) ==="
 rm -rf build
 COVERAGE=1 pytest 02_SIL/tests 03_CAN/tests -q --junitxml=reports/junit.xml
 

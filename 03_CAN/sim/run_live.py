@@ -6,6 +6,7 @@ Terminal 3:  send switch frames / diagnostic requests with cansend (see below)
 
 The ECU only prints when its status changes.
 """
+import os
 import sys
 
 import can_network as net
@@ -29,10 +30,14 @@ Window ECU running on {ch} for {dur:.0f} s. Try in another terminal:
 
 def main():
     duration = float(sys.argv[1]) if len(sys.argv) > 1 else 120.0
-    ch = net.os.environ.get("CAN_CHANNEL", "vcan0")
-    if net.os.environ.get("CAN_INTERFACE") != "socketcan":
+    ch = os.environ.get("CAN_CHANNEL", "vcan0")
+    if os.environ.get("CAN_INTERFACE") != "socketcan":
         sys.exit("Run with CAN_INTERFACE=socketcan (and vcan0 up), see the docstring.")
     print(HELP.format(ch=ch, dur=duration))
+
+    import inspect
+    if "bcm_enabled" not in inspect.signature(net.run_network).parameters:
+        sys.exit("03_CAN/sim/can_network.py is the old version - replace it with the new one.")
 
     sil_env.build_library()
     lib = sil_env.load_library()
