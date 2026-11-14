@@ -5,6 +5,8 @@ Terminal 2:  candump -ta vcan0                       (watch all frames)
 Terminal 3:  send switch frames / diagnostic requests with cansend (see below)
 
 The ECU only prints when its status changes.
+Since CR_01 the ECU stores U0140-00 if no switch frame arrives within 500 ms of
+start-up: start cangen right away, or clear the DTC with UDS afterwards.
 """
 import os
 import sys
@@ -15,7 +17,9 @@ import sil_env
 STATE = ["IDLE", "MOVING_UP", "MOVING_DOWN", "PINCH_REVERSE", "WAIT_RELEASE", "ERROR"]
 MOTOR = {0: "Stop", 1: "Up", 2: "Down"}
 HELP = """
-Window ECU running on {ch} for {dur:.0f} s. Try in another terminal:
+Window ECU running on {ch} for {dur:.0f} s.
+Note: no switch frame within 0.5 s -> ERROR + DTC (CR_01). Start cangen now, or clear the DTC later.
+Try in another terminal:
 
   Press Up (BCM sends every 20 ms - stop with Ctrl+C = lost message!):
     while true; do cansend {ch} 200#0100; sleep 0.02; done

@@ -86,7 +86,12 @@ void WindowCtrl_Step(const WindowInputs_t *in, WindowOutputs_t *out)
     switch (s_state)
     {
         case WS_IDLE:
-            if (in->sw_up && !in->sw_down && (in->pos_pct < POS_CLOSED_PCT) &&
+            if (!msg_ok(in->sw_msg_age_ms))                      /* REQ_09, CR_01 */
+            {
+                s_out.dtc_switch_timeout = true;
+                enter_state(WS_ERROR);
+            }
+            else if (in->sw_up && !in->sw_down && (in->pos_pct < POS_CLOSED_PCT) &&
                 voltage_ok(in->vbat_v) && msg_ok(in->sw_msg_age_ms))
             {
                 enter_state(WS_MOVING_UP);                       /* REQ_01 */
@@ -138,17 +143,16 @@ void WindowCtrl_Step(const WindowInputs_t *in, WindowOutputs_t *out)
             }
             break;
 
-        case WS_MOVING_DOWN: 
-        
+        case WS_MOVING_DOWN:
             if (!msg_ok(in->sw_msg_age_ms))                      /* 1: REQ_09 */
             {
                 s_out.dtc_switch_timeout = true;
-                enter_state(WS_ERROR); 
+                enter_state(WS_ERROR);
             }
             else if (s_ticks >= OVERRUN_TICKS)                   /* 2: REQ_10 */
             {
                 s_out.dtc_motor_overrun = true;
-                enter_state(WS_ERROR); 
+                enter_state(WS_ERROR);
             }
             else if (!voltage_ok(in->vbat_v))                    /* 3: REQ_08 */
             {
@@ -158,7 +162,7 @@ void WindowCtrl_Step(const WindowInputs_t *in, WindowOutputs_t *out)
             {
                 enter_state(WS_IDLE);
             }
-            else if (!in->sw_down || (in->pos_pct <= POS_OPEN_PCT )) /* 5: REQ_03, REQ_04 */
+            else if (!in->sw_down || (in->pos_pct <= POS_OPEN_PCT)) /* 5: REQ_03, REQ_04 */
             {
                 enter_state(WS_IDLE);
             }
@@ -169,26 +173,26 @@ void WindowCtrl_Step(const WindowInputs_t *in, WindowOutputs_t *out)
             break;
 
         case WS_PINCH_REVERSE:
-            
-            if (!msg_ok(in->sw_msg_age_ms))                     /* 1: REQ_09 */
+            if (!msg_ok(in->sw_msg_age_ms))                          /* 1: REQ_09 */
             {
                 s_out.dtc_switch_timeout = true;
-                enter_state(WS_ERROR); 
+                enter_state(WS_ERROR);
             }
-            else if (s_ticks >= OVERRUN_TICKS)                   /* 2: REQ_10 */
+            else if (s_ticks >= OVERRUN_TICKS)                       /* 2: REQ_10 */
             {
                 s_out.dtc_motor_overrun = true;
                 enter_state(WS_ERROR);
             }
-            else if (!voltage_ok(in->vbat_v))                    /* 3: REQ_08 */
+            else if (!voltage_ok(in->vbat_v))                        /* 3: REQ_08 */
             {
-                s_out.pinch_flag = false;                        /* REQ_14 */
+                s_out.pinch_flag = false;                            /* REQ_14 */
                 enter_state(WS_IDLE);
-            }     
-            else if (((s_pos_at_pinch - in->pos_pct) >= REVERSE_PCT) || (in->pos_pct <=POS_OPEN_PCT) )                  /* 4: REQ_06, REQ_13 */
+            }
+            else if (((s_pos_at_pinch - in->pos_pct) >= REVERSE_PCT) ||
+                     (in->pos_pct <= POS_OPEN_PCT))                  /* 4: REQ_06, REQ_13 */
             {
                 enter_state(WS_WAIT_RELEASE);
-            }    
+            }
             else
             {
                 /* keep reversing */
@@ -196,30 +200,31 @@ void WindowCtrl_Step(const WindowInputs_t *in, WindowOutputs_t *out)
             break;
 
         case WS_WAIT_RELEASE:
-            
-            if(!in->sw_up)
+            if (!msg_ok(in->sw_msg_age_ms))                          /* REQ_09, CR_01 */
             {
-                s_out.pinch_flag = false;  
-                enter_state(WS_IDLE);     
+                s_out.dtc_switch_timeout = true;
+                enter_state(WS_ERROR);
+            }
+            else if (!in->sw_up)                                     /* REQ_13 */
+            {
+                s_out.pinch_flag = false;                            /* REQ_14 */
+                enter_state(WS_IDLE);
             }
             else
             {
-            /* keep in wait to release */
+                /* wait until Up is released */
             }
-
             break;
 
         case WS_ERROR:
-           
-            if(msg_ok(in->sw_msg_age_ms) && !in->sw_up && !in->sw_down)  /* recovery */
+            if (msg_ok(in->sw_msg_age_ms) && !in->sw_up && !in->sw_down)   /* recovery */
             {
-                s_out.pinch_flag = false;                     /* REQ_14 */
-                enter_state(WS_IDLE);     
+                s_out.pinch_flag = false;                                 /* REQ_14 */
+                enter_state(WS_IDLE);
             }
-             else
+            else
             {
                 /* stay in ERROR until the fault is gone and both switches are released */
-            
             }
             break;
 

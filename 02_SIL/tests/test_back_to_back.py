@@ -54,6 +54,9 @@ SCENARIOS = {
     "TC_20": dict(obstacle_active=True, msg_age=((0, 0), (2, 600))),
     "TC_21": dict(obstacle_active=True),
     "TC_22": dict(sw_up=((0, 0), (1, 1), (6, 0)), msg_age=((0, 0), (3, 600), (5, 0))),
+    "TC_49": dict(sw_up=NEVER, msg_age=((0, 0), (2, 600))),
+    "TC_50": dict(obstacle_active=True, msg_age=((0, 0), (4, 600))),
+    "TC_51": dict(sw_up=((0, 0), (5, 1)), msg_age=((0, 0), (2, 600), (3, 0))),
 }
 
 

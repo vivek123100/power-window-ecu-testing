@@ -96,3 +96,23 @@ def test_alive_counter_increments(ctrl):
     tr = run_network(ctrl, stop_time=1.0)
     counters = [s["AliveCounter"] for _, s in tr.decoded("BCM_WindowSwitch")]
     assert counters[:17] == list(range(16)) + [0]
+
+
+def test_TC_52_bcm_never_sends_after_power_on(ctrl):
+    """REQ_09 (CR_01, option A): no switch message at all -> DTC ~510 ms after power-on"""
+    tr = run_network(ctrl, bcm_enabled=False, stop_time=2.0)
+    t_err = next((t for t, cmd, state, pos, age in tr.ecu if state == ERROR), None)
+    assert t_err is not None, "dead BCM never detected"
+    assert 0.50 < t_err <= 0.52, f"detected after {t_err * 1000:.0f} ms (allowed 500-520 ms)"
+    assert status_at(tr, t_err + 0.1)["DTC_SwitchTimeout"] == 1
+
+
+@pytest.mark.parametrize("tc, silent, expect_error", [
+    ("TC_53 idle, frames 500 ms apart -> no timeout", (1.5, 1.98), False),
+    ("TC_53 idle, frames 560 ms apart -> timeout", (1.5, 2.04), True),
+])
+def test_TC_53_timeout_boundary_while_idle(ctrl, tc, silent, expect_error):
+    """REQ_09 (CR_01): the same boundary as TC_37/38, but with the window idle"""
+    tr = run_network(ctrl, sw_up=((0, 0),), bcm_silent=silent, stop_time=3.0)
+    entered_error = any(state == ERROR for t, cmd, state, pos, age in tr.ecu)
+    assert entered_error == expect_error, tc

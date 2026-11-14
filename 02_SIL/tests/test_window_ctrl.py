@@ -3,7 +3,7 @@
 Run from the repo root:   pytest 02_SIL/tests -v
 """
 import pytest
-from sil_env import simulate, ERROR, IDLE, PINCH_REVERSE
+from sil_env import simulate, ERROR, IDLE, PINCH_REVERSE, WAIT_RELEASE
 
 UP_AT_1 = ((0, 0), (1, 1))
 DOWN_AT_1 = ((0, 0), (1, 1))
@@ -258,3 +258,41 @@ def test_TC_36_switch_from_down_to_up(ctrl):
     """REQ_03: Down released and Up pressed in the same cycle -> stop first"""
     tr = simulate(ctrl, sw_up=((0, 0), (2, 1)), sw_down=((0, 0), (1, 1), (2, 0)))
     assert tr.val_at("motor_cmd", 2.0) == 0, "must stop before changing direction"
+
+
+# ------------------------------------------------------------------------
+# TC_49 - TC_51 and updated TC_32: CR_01 (REQ_09 timeout in every state)
+# ------------------------------------------------------------------------
+def test_TC_32_message_missing_from_start_stores_dtc(ctrl):
+    """REQ_09 (CR_01): no switch message from power-on -> ERROR + DTC, motor never runs"""
+    tr = simulate(ctrl, msg_age=((0, 600),))
+    assert set(tr.values("motor_cmd")) == {0}
+    assert tr.val_at("state", 0.1) == ERROR
+    assert tr.val_at("dtc_switch_timeout", 0.1) == 1
+
+
+def test_TC_49_msg_lost_while_idle(ctrl):
+    """REQ_09 (CR_01): message lost at 2 s while idle -> ERROR + DTC"""
+    tr = simulate(ctrl, sw_up=NEVER, msg_age=((0, 0), (2, 600)))
+    assert tr.val_at("state", 1.95) == IDLE
+    assert tr.val_at("state", 2.1) == ERROR, "lost message not detected while idle"
+    assert tr.val_at("dtc_switch_timeout", 2.1) == 1
+    assert set(tr.values("motor_cmd")) == {0}
+
+
+def test_TC_50_msg_lost_in_wait_release(ctrl):
+    """REQ_09 (CR_01): message lost while waiting for Up release after a pinch"""
+    tr = simulate(ctrl, obstacle_active=True, msg_age=((0, 0), (4, 600)))
+    assert tr.val_at("state", 3.9) == WAIT_RELEASE, "precondition: not in WAIT_RELEASE"
+    assert tr.val_at("state", 4.1) == ERROR, "lost message not detected in WAIT_RELEASE"
+    assert tr.val_at("dtc_switch_timeout", 4.1) == 1
+
+
+def test_TC_51_idle_timeout_recovery(ctrl):
+    """REQ_09 (CR_01): idle timeout 2-3 s, message back, Up at 5 s -> works again, DTC stays"""
+    tr = simulate(ctrl, sw_up=((0, 0), (5, 1)), msg_age=((0, 0), (2, 600), (3, 0)))
+    assert tr.val_at("state", 2.5) == ERROR
+    assert tr.val_at("state", 3.1) == IDLE
+    t = tr.first_t("motor_cmd", lambda v: v == 1, 5.0)
+    assert t is not None and t - 5.0 <= 0.05, "window does not work after recovery"
+    assert tr.val_at("dtc_switch_timeout", 11.0) == 1, "DTC must stay stored"

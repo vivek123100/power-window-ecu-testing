@@ -34,7 +34,6 @@ import uds      # noqa: E402  (UDS server, tester, ISO-TP)
 
 DBC_FILE = ROOT / "03_CAN" / "dbc" / "power_window.dbc"
 DT = sil_env.DT
-NEVER_RECEIVED_MS = 1.0e6                     # before the first switch message
 MOTOR_STATE = {0: 0, 1: 1, -1: 2}             # motor_cmd -> DBC MotorState
 _channels = itertools.count()
 
@@ -95,7 +94,7 @@ class DCU:
         self.tx_status = db.get_message_by_name("DCU_WindowStatus")
         self.cycle = cycle_time_s(self.tx_status)
         self.sw_up = self.sw_down = False     # last received values
-        self.last_rx_t = None
+        self.last_rx_t = 0.0                  # option A (CR_01): age counts from power-on
         self.next_tx = 0.0
         self.inp, self.out = sil_env.Inputs(), sil_env.Outputs()
         self.pos_prev, self.cur_prev = plant.p, 0.0
@@ -121,8 +120,7 @@ class DCU:
                     self.bus.send(can.Message(arbitration_id=uds.RESP_ID, data=frame,
                                               is_extended_id=False))
 
-        age_ms = (NEVER_RECEIVED_MS if self.last_rx_t is None
-                  else (t - self.last_rx_t) * 1000.0)
+        age_ms = (t - self.last_rx_t) * 1000.0
 
         # 2. 10 ms task: run the C controller, then the plant
         self.inp.sw_up, self.inp.sw_down = self.sw_up, self.sw_down
