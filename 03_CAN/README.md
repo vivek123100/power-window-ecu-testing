@@ -169,3 +169,15 @@ Do these without looking at the answers, then check with the live demo.
 1. REQ_09: the timeout is only detected while the window moves, not in IDLE.
 2. The AliveCounter is never checked: no E2E protection against a frozen sender.
 3. REQ_09 does not specify the detection window (measured: 510 ms; proposal 500–520 ms).
+
+Points 1 and 3 are planned as **CR_01** (change request).
+
+## Out of scope (found during scenario review, not implemented)
+
+4. **Behaviour at engine off and car locking is not specified.** The ECU has no ignition, door or lock inputs,
+   so after engine off the window simply stays where it is. Real cars usually add retained power (windows
+   still work for a while after engine off), comfort closing (locking closes the windows fully), and blocking
+   while locked. Comfort closing moves the window with nobody at the switch, so anti-pinch must stay active
+   (see regulations such as ECE R21 / FMVSS 118).
+   **Decision:** not implemented in this project, because it needs new CAN signals (DBC), new requirements,
+   new model states, C code and tests across all levels. Documented as a possible future **CR_02**.
