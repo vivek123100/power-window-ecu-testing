@@ -20,6 +20,8 @@ DT = 0.01                                                    # 10 ms cycle
 
 # State numbers - same order as the enum in window_ctrl.h
 IDLE, MOVING_UP, MOVING_DOWN, PINCH_REVERSE, WAIT_RELEASE, ERROR = range(6)
+# E2E status - same order as the enum in e2e_counter.h (CR_04)
+E2E_INITIAL, E2E_OK, E2E_REPEATED = range(3)
 
 
 # ---------------------------------------------------------------- C interface
@@ -60,8 +62,9 @@ def build_library(coverage=False):
         return
     _built = True
     BUILD.mkdir(exist_ok=True)
+    sources = [str(f) for f in sorted(SRC.glob("*.c"))]   # window_ctrl.c, e2e_counter.c
     cmd = ["gcc", "-std=c99", "-Wall", "-Wextra", "-Werror",
-           "-shared", "-fPIC", f"-I{SRC}", str(SRC / "window_ctrl.c"),
+           "-shared", "-fPIC", f"-I{SRC}", *sources,
            "-o", str(LIB)]
     if coverage:
         cmd[1:1] = ["--coverage", "-O0"]
@@ -77,6 +80,15 @@ def load_library():
     if hasattr(lib, "WindowCtrl_ClearDtcs"):          # added in Step 3d (UDS 0x14)
         lib.WindowCtrl_ClearDtcs.argtypes = []
         lib.WindowCtrl_ClearDtcs.restype = None
+    if hasattr(lib, "E2E_CheckCounter"):              # added in CR_04 (e2e_counter.c)
+        lib.E2E_Init.argtypes = []
+        lib.E2E_Init.restype = None
+        lib.E2E_CheckCounter.argtypes = [ctypes.c_uint8]
+        lib.E2E_CheckCounter.restype = ctypes.c_int
+        lib.E2E_DtcActive.argtypes = []
+        lib.E2E_DtcActive.restype = ctypes.c_bool
+        lib.E2E_ClearDtc.argtypes = []
+        lib.E2E_ClearDtc.restype = None
     return lib
 
 

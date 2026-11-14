@@ -4,7 +4,7 @@
 > *"I'm continuing my automotive testing learning project. Here is my project context. Continue from 'Next steps'."*
 > Update this file at every milestone (or ask Claude to update it).
 
-_Last updated: 5 Nov 2026 (CAN/UDS complete)_
+_Last updated: 14 Nov 2026 (CR_01 done)_
 
 ## 1. Who I am and what I want
 - Automotive engineer, beginner–intermediate in testing theory.
@@ -59,5 +59,8 @@ Bugs found so far: missing fault handling in PINCH_REVERSE (→ TC_20), repeated
 - Parked for later: Jira (free) + Xray trial; Polarion/codeBeamer/Jama trial; Doorstop or sphinx-needs; seat heater Stateflow exercise.
 
 ## 5. Next steps
-1. Phase 4: PIL on an STM32 Nucleo board (to buy if not available): flash `window_ctrl.c`, run test inputs over serial (or CAN), compare with SIL, measure execution time of `WindowCtrl_Step`.
-2. Housekeeping: add the 3 tracking files to `docs/`; move the repo out of OneDrive to `C:\Projects`; add TC_23–TC_36 to the MIL harness; decide the REQ_09 open question.
+- **CR_01 DONE (14 Nov 2026):** REQ_09 timeout now detected in every state (new transitions IDLE→ERROR and WAIT_RELEASE→ERROR, priority 1, in Stateflow and `window_ctrl.c`); option A start-up rule (message age counts from power-on, `can_network.py` `last_rx_t = 0.0`); tests TC_32 updated, TC_49–TC_53 added; MIL 23/23, `bash run_all.sh` 87 passed / 1 skipped, coverage 96 %. Since CR_01, `run_live.py` stores U0140-00 if `cangen` doesn't start within 0.5 s.
+- My computer's repo folder is connected to the chat: Claude can write files directly into it.
+1. Open points left: OP_03 AliveCounter / E2E (open), OP_06 start-up delay (A + C) improvement. Out of scope: OP_04 engine off / locking (CR_02), OP_05 crash behaviour (CR_03).
+2. Next options: README + demo video (job-ready), PIL on a board (ask which board), or E2E (OP_03). Try a feature branch + pull request for the next change.
+3. Housekeeping: move the repo out of OneDrive to `C:\Projects`; add TC_23–TC_36 to the MIL harness.

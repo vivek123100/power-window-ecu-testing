@@ -24,3 +24,6 @@ Compared every 10 ms. Tolerance: value {'pos': 0.001, 'current': 0.001} for floa
 | TC_20 | PASS | 100.0 % | identical |
 | TC_21 | PASS | 100.0 % | identical |
 | TC_22 | PASS | 100.0 % | identical |
+| TC_49 | PASS | 100.0 % | identical |
+| TC_50 | PASS | 100.0 % | identical |
+| TC_51 | PASS | 100.0 % | identical |

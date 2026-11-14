@@ -3,7 +3,7 @@
 Every tool and method used in this project, where it was used, and the evidence in the repo.
 Status: ✅ used in the project · 🔧 set up, not used yet · 📅 planned
 
-_Last updated: 5 Nov 2026 (MIL, SIL and CAN/UDS complete)_
+_Last updated: 14 Nov 2026 (MIL, SIL, CAN/UDS complete; CR_01 implemented, 87 tests)_
 
 ## Modelling & simulation
 | Tool | Status | What I did with it | Evidence |
@@ -48,7 +48,9 @@ _Last updated: 5 Nov 2026 (MIL, SIL and CAN/UDS complete)_
 | candump log format | ✅ | Bus traces exported for CAN tools (e.g. SavvyCAN) | `reports/can/demo.log` |
 | ISO-TP (ISO 15765-2) | ✅ | Implemented single, first, consecutive and flow-control frames by hand | `03_CAN/sim/uds.py` |
 | UDS (ISO 14229) | ✅ | Diagnostic server in the ECU: 0x10, 0x22 (F195, 0100), 0x19 02, 0x14, 0x3E, negative responses; DTCs U0140-00 / B1310-00 | `03_CAN/sim/uds.py`, `03_CAN/tests/test_uds.py` |
-| SocketCAN / can-utils, udsoncan | 📅 | Planned for real hardware (PIL/HIL) | – |
+| SocketCAN (vcan0) | ✅ | Ran the ECU in real time on a Linux SocketCAN interface (WSL) | `03_CAN/sim/run_live.py` |
+| can-utils (candump, cansend, cangen) | ✅ | Watched live traffic, measured cycle times from timestamps, injected switch frames, sent UDS requests and ISO-TP flow control by hand | – |
+| udsoncan | 📅 | Planned for the HIL bench | – |
 
 ## Hardware (PIL / HIL)
 | Tool | Status | What I did with it | Evidence |
@@ -62,8 +64,11 @@ _Last updated: 5 Nov 2026 (MIL, SIL and CAN/UDS complete)_
 | V-model / X-in-the-loop (MIL, SIL, PIL, HIL) | ✅ | Project structure; MIL complete |
 | Requirements engineering (testable "shall" requirements) | ✅ | 14 requirements in `docs/requirements.md` |
 | Requirements review | ✅ | Found an untestable requirement (REQ_06: physically impossible timing) and rewrote it |
-| Test specification | ✅ | 48 test cases across MIL, SIL, CAN and UDS in `docs/test_specification.md` |
+| Test specification | ✅ | 52 test cases across MIL, SIL, CAN and UDS in `docs/test_specification.md` |
+| Change request process (CR_01) | ✅ | Impact analysis, requirement update, model + code change, tests written first (red), then green; back-to-back kept model and code in step |
+| Scenario review / requirement gap analysis | ✅ | Found gaps (idle timeout, E2E, detection window) and out-of-scope items (engine off/locking, crash); documented with decisions |
 | Test-driven development | ✅ | UDS clear-DTC test written first (red), then the C function `WindowCtrl_ClearDtcs` (green) |
+| Manual fault injection on a live bus | ✅ | Stopped the BCM sender with cangen/Ctrl+C -> timeout, DTC U0140-00, read and cleared via UDS by hand |
 | Communication fault testing | ✅ | Real message gaps on the bus: timeout boundary 500 vs 560 ms, 510 ms detection time measured |
 | Traceability (requirement ↔ test ↔ result) | ✅ | `docs/traceability.md` |
 | Boundary value analysis | ✅ | 7.9 / 8.1 A, 8.9 / 9.0 V, 7.9 / 8.1 s |
