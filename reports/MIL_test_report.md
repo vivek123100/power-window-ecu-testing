@@ -1,9 +1,9 @@
 # MIL Test Report - Power Window ECU
 
-Generated: 05-Nov-2026 00:29:17  
+Generated: 14-Nov-2026 19:07:25  
 Model: PowerWindow_MIL.slx
 
-**20 of 20 executed test cases passed.**
+**23 of 23 executed test cases passed.**
 
 | TC | Requirement | Description | Result | Details |
 |---|---|---|---|---|
@@ -29,3 +29,6 @@ Model: PowerWindow_MIL.slx
 | TC_20 | REQ_09 | Message lost during pinch reversal -> stop + DTC | PASS | reversing at 1.95 s = 1, at 2.1 s: MotorCmd = 0, DTC = 1 |
 | TC_21 | REQ_13, REQ_14 | Up held after pinch -> no re-closing | PASS | re-closing after pinch = 0, PinchFlag at 5 s = 1 |
 | TC_22 | REQ_09 | Message back while Up held -> no restart | PASS | motor moved after fault = 0, DTC at 11 s = 1 |
+| TC_49 | REQ_09 | CR_01: message lost while idle -> ERROR + DTC | PASS | DTC at 1.95 s = 0, at 2.1 s = 1, at 11 s = 1, motor ever on = 0 |
+| TC_50 | REQ_09 | CR_01: message lost in WAIT_RELEASE -> ERROR + DTC | PASS | in WAIT_RELEASE at 3.9 s = 1, DTC at 4.6 s = 1, motor moved after reversal = 0 |
+| TC_51 | REQ_09 | CR_01: idle timeout, recovery, DTC stays | PASS | DTC at 2.6 s = 1, motor up 0 ms after press, DTC at 11 s = 1 |

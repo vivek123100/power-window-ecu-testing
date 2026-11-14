@@ -108,6 +108,12 @@ tests(end+1) = makeTest("TC_21", "REQ_13, REQ_14", "Up held after pinch -> no re
     "ObstacleActive", 1);
 tests(end+1) = makeTest("TC_22", "REQ_09", "Message back while Up held -> no restart", @chk_TC22, ...
     "SwUp", [0 0; 1 1; 6 0], "MsgAge", [0 0; 3 600; 5 0]);
+tests(end+1) = makeTest("TC_49", "REQ_09", "CR_01: message lost while idle -> ERROR + DTC", @chk_TC49, ...
+    "SwUp", off, "MsgAge", [0 0; 2 600]);
+tests(end+1) = makeTest("TC_50", "REQ_09", "CR_01: message lost in WAIT_RELEASE -> ERROR + DTC", @chk_TC50, ...
+    "ObstacleActive", 1, "MsgAge", [0 0; 4 600]);
+tests(end+1) = makeTest("TC_51", "REQ_09", "CR_01: idle timeout, recovery, DTC stays", @chk_TC51, ...
+    "SwUp", [0 0; 5 1], "MsgAge", [0 0; 2 600; 3 0]);
 end
 
 function tc = makeTest(id, req, desc, check, varargin)
@@ -223,6 +229,30 @@ restart = any(r.MotorCmd.v(r.MotorCmd.t > 3.1) ~= 0);
 d = valAt(r.DTC_SwitchTimeout, 11);
 ok  = ~restart && d == 1;
 msg = sprintf("motor moved after fault = %d, DTC at 11 s = %d", restart, d);
+end
+
+function [ok, msg] = chk_TC49(r)
+before = valAt(r.DTC_SwitchTimeout, 1.95);
+after  = valAt(r.DTC_SwitchTimeout, 2.1);
+latch  = valAt(r.DTC_SwitchTimeout, 11);
+ok  = all(r.MotorCmd.v == 0) && before == 0 && after == 1 && latch == 1;
+msg = sprintf("DTC at 1.95 s = %d, at 2.1 s = %d, at 11 s = %d, motor ever on = %d", before, after, latch, any(r.MotorCmd.v ~= 0));
+end
+
+function [ok, msg] = chk_TC50(r)
+waiting = valAt(r.MotorCmd, 3.9) == 0 && valAt(r.PinchFlag, 3.9) == 1;
+d = valAt(r.DTC_SwitchTimeout, 4.6);
+reclose = any(r.MotorCmd.v(r.MotorCmd.t > 2.7) ~= 0);
+ok  = waiting && d == 1 && ~reclose;
+msg = sprintf("in WAIT_RELEASE at 3.9 s = %d, DTC at 4.6 s = %d, motor moved after reversal = %d", waiting, d, reclose);
+end
+
+function [ok, msg] = chk_TC51(r)
+d1 = valAt(r.DTC_SwitchTimeout, 2.6);
+t  = firstT(r.MotorCmd, @(v) v == 1, 5);
+d2 = valAt(r.DTC_SwitchTimeout, 11);
+ok  = d1 == 1 && (t - 5) <= 0.05 && d2 == 1;
+msg = sprintf("DTC at 2.6 s = %d, motor up %.0f ms after press, DTC at 11 s = %d", d1, (t - 5) * 1000, d2);
 end
 
 % =====================================================================
