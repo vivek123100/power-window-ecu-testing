@@ -36,7 +36,7 @@ Techniques used: requirements-based testing, boundary value analysis, equivalenc
 | TC_30 | REQ_08, REQ_14 | Pinch reversal active | Vbat drops to 8.5 V at 2.0 s | Motor stops within 50 ms, state IDLE, PinchFlag cleared | 
 | TC_31 | REQ_13, REQ_14 | Pinch, Up held until 4 s | Release Up at 4 s, press again at 5 s | PinchFlag 1 at 3.9 s, 0 at 4.1 s, state IDLE; motor up again within 50 ms of new press | 
 | TC_32 | REQ_09 | Idle, switch message missing from start | Press Up (and separately Down) | Motor never starts | 
-| TC_33 | REQ_08 | Idle, Vbat 16.5 V from start | Press Up (and separately Down) | Motor never starts | 
+| TC_33 | REQ_08 | Idle, Vbat 16.5 V from start | Press Up (and separately Down) | “Motor never starts; ERROR, DTC_SwitchTimeout stored (CR_01)” | 
 | TC_34 | REQ_05 | Window at 2 %, obstacle at 3 % | Hold Up | Blocked at 3 % (below pinch zone): no pinch, no reversal | 
 | TC_35 | REQ_06 | Window at 5 %, obstacle at 10 % | Hold Up | Pinch at 10 %, reversal ends at 0 % (less than 20 % available), motor stops | 
 | TC_36 | REQ_03 | Moving down | At 2 s: Down released and Up pressed in the same cycle | Motor stops first (no direct reversal of direction) |
@@ -52,6 +52,10 @@ Techniques used: requirements-based testing, boundary value analysis, equivalenc
 | TC_46 | REQ_15 | ECU idle | 10 03 / 3E 00 | 50 03 00 32 01 F4 / 7E 00 | 
 | TC_47 | REQ_15 | ECU idle | 31 01 02 03 / 22 F1 / 10 02 | 7F 31 11 / 7F 22 13 / 7F 10 12 | 
 | TC_48 | REQ_15 | ECU idle | Three requests (22, 19, 3E) | Each response starts within 50 ms |
+| TC_49 | REQ_09 | Window idle at 50 %, no switch pressed | Switch message age > 500 ms from 2 s | ERROR as soon as the age exceeds 500 ms, DTC_SwitchTimeout stored, motor stays off |
+| TC_50 | REQ_09 | Pinch, Up still held (WAIT_RELEASE) | Switch message lost from 4 s | ERROR, DTC_SwitchTimeout stored, motor stays off |
+| TC_51 | REQ_09 | Idle timeout from 2 s to 3 s, switches released | Message back at 3 s, Up pressed at 5 s | IDLE again, window moves at 5 s, DTC still stored |
+| TC_52 | REQ_09 | CAN level, BCM never sends after power-on | – | DTC_SwitchTimeout stored about 510 ms after power-on |
 
 
 ## Coverage justifications

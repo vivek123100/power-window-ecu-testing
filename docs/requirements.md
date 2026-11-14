@@ -16,7 +16,7 @@ vehicle speed [km/h, via CAN], battery voltage [V]
 | REQ_06 | After a pinch is detected, the window shall start moving down within 200 ms and reverse by at least 20 %. |
 | REQ_07 | Anti-pinch shall be inactive above 96 % position. |
 | REQ_08 | If battery voltage < 9 V or > 16 V, the motor shall not run. |
-| REQ_09 | If the switch CAN message is missing for > 500 ms in any state, the motor shall stop (if running), the ECU shall enter ERROR, and DTC_SWITCH_TIMEOUT shall be stored. Detection shall happen within 500–520 ms. |
+| REQ_09 | If the switch CAN message is missing for more than 500 ms **in any state**, the ECU shall stop the motor (if running), enter ERROR and store DTC_SWITCH_TIMEOUT; detection shall happen within 500–520 ms. Until the first message is received, the message age shall count from power-on. |
 | REQ_10 | If the motor runs continuously for > 8 s, it shall stop and DTC_MOTOR_OVERRUN shall be stored. |
 | REQ_11 | If Up and Down are both active at the same time, the motor shall stop. |
 | REQ_12 | The ECU shall send its status (position, motor state, pinch flag) on CAN every 100 ms. |
@@ -30,7 +30,9 @@ vehicle speed [km/h, via CAN], battery voltage [V]
 
 | ID | Type | Description | Status |
 |---|---|---|---|
-| OP_01 | Gap | REQ_09: lost switch message only detected while the window moves, not in IDLE | Planned: CR_01 |
-| OP_02 | Gap | REQ_09: detection window not specified (measured 510 ms; proposal 500–520 ms) | Planned: CR_01 |
+| OP_01 | Gap | REQ_09: lost switch message only detected while the window moves, not in IDLE | Fixed by CR_01|
+| OP_02 | Gap | REQ_09: detection window not specified (measured 510 ms; proposal 500–520 ms) | Fixed by CR_01 |
 | OP_03 | Gap | AliveCounter in 0x200 is never checked (no E2E protection against a frozen sender) | Open |
 | OP_04 | Out of scope | Behaviour at engine off and car locking not specified (no ignition, door or lock inputs; window stays where it is). Real cars: retained power, comfort closing with anti-pinch active, block while locked | Not implemented; possible future CR_02 |
+| OP_05 | Out of scope | No emergency behaviour: the ECU has no crash input, so after an accident or fire the window stays where it is. Real cars react to a crash message from the airbag ECU (unlock doors, hazard lights, sometimes open windows); this needs E2E-protected CAN signals and ISO 26262 safety analysis (false trigger at speed) | Not implemented; possible future CR_03 |
+| OP_06 | Improvement | Start-up delay for timeout monitoring (option A + C), to avoid false DTCs when the BCM wakes up slower than 500 ms | Open |
