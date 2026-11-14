@@ -20,3 +20,6 @@ __pycache__/
 Thumbs.db
 reports/coverage/
 reports/junit.xml
+
+# third-party reading material, keep local only
+03_CAN/reading docs/
