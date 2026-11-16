@@ -62,13 +62,18 @@ _Last updated: 14 Nov 2026 (MIL, SIL, CAN/UDS complete; CR_01 implemented, 87 te
 | Method | Status | Where I applied it |
 |---|---|---|
 | V-model / X-in-the-loop (MIL, SIL, PIL, HIL) | ✅ | Project structure; MIL complete |
-| Requirements engineering (testable "shall" requirements) | ✅ | 14 requirements in `docs/requirements.md` |
+| Requirements engineering (testable "shall" requirements) | ✅ | 18 requirements in `docs/requirements.md` (2 change requests) |
 | Requirements review | ✅ | Found an untestable requirement (REQ_06: physically impossible timing) and rewrote it |
-| Test specification | ✅ | 52 test cases across MIL, SIL, CAN and UDS in `docs/test_specification.md` |
+| Test specification | ✅ | 68 test cases across MIL, SIL, CAN, E2E and UDS in `docs/test_specification.md` |
 | Change request process (CR_01) | ✅ | Impact analysis, requirement update, model + code change, tests written first (red), then green; back-to-back kept model and code in step |
 | Scenario review / requirement gap analysis | ✅ | Found gaps (idle timeout, E2E, detection window) and out-of-scope items (engine off/locking, crash); documented with decisions |
 | Test-driven development | ✅ | UDS clear-DTC test written first (red), then the C function `WindowCtrl_ClearDtcs` (green) |
 | Manual fault injection on a live bus | ✅ | Stopped the BCM sender with cangen/Ctrl+C -> timeout, DTC U0140-00, read and cleared via UDS by hand |
+| E2E protection (AliveCounter) | ✅ | CR_04: C module `e2e_counter.c` discards stale frames, U0422-00 after 3 in a row; check placed in the communication layer, so the window logic stayed unchanged |
+| Frozen-sender fault injection | ✅ | Live BCM (`bcm_live.py`) frozen on purpose: frames on time but stale; watched the counter stop in candump |
+| Robustness testing (unexpected input) | ✅ | Two ECUs on one bus crashed the ISO-TP receiver; fixed to drop bad frames, regression test TC_68 |
+| Git feature branch + pull request | ✅ | CR_04 developed on `cr04-e2e-alive-counter`, merged into `main` through a PR with green CI |
+| Workshop diagnostic flow (repair → clear → verify) | ✅ | Saw a cleared DTC come straight back while the fault was still present |
 | Communication fault testing | ✅ | Real message gaps on the bus: timeout boundary 500 vs 560 ms, 510 ms detection time measured |
 | Traceability (requirement ↔ test ↔ result) | ✅ | `docs/traceability.md` |
 | Boundary value analysis | ✅ | 7.9 / 8.1 A, 8.9 / 9.0 V, 7.9 / 8.1 s |

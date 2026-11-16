@@ -3,6 +3,7 @@
 Three nodes on a python-can *virtual* bus (no hardware needed):
 
   BCM     body control module - sends BCM_WindowSwitch every 20 ms
+          (can be "frozen": repeats its last frame, same AliveCounter - CR_04)
   DCU     the door control unit = YOUR C CONTROLLER (02_SIL/src/window_ctrl.c)
           + the window plant. It decodes the switch message, works out
           SwMsgAge_ms from when the last message really arrived, runs the
@@ -71,17 +72,22 @@ class BCM:
         self.cycle = cycle_time_s(self.msg)
         self.counter = 0
         self.next_tx = 0.0
+        self.last_data = None
 
-    def step(self, t, sw_up, sw_down, silent):
+    def step(self, t, sw_up, sw_down, silent, frozen=False):
         if silent:
             self.next_tx = t                  # send again as soon as silence ends
             return
         if t >= self.next_tx - 1e-9:
-            data = self.msg.encode({"SwUp": int(sw_up), "SwDown": int(sw_down),
-                                    "AliveCounter": self.counter})
+            if frozen and self.last_data is not None:
+                data = self.last_data         # frozen sender: same frame again (CR_04)
+            else:
+                data = self.msg.encode({"SwUp": int(sw_up), "SwDown": int(sw_down),
+                                        "AliveCounter": self.counter})
+                self.counter = (self.counter + 1) % 16
+                self.last_data = data
             self.bus.send(can.Message(arbitration_id=self.msg.frame_id, data=data,
                                       is_extended_id=False))
-            self.counter = (self.counter + 1) % 16
             self.next_tx += self.cycle
 
 
@@ -99,11 +105,21 @@ class DCU:
         self.inp, self.out = sil_env.Inputs(), sil_env.Outputs()
         self.pos_prev, self.cur_prev = plant.p, 0.0
         self.uds = uds.UdsServer(self)
+        self.e2e = hasattr(lib, "E2E_CheckCounter")    # CR_04 module present?
+        self.discarded = 0                             # frames rejected by E2E
         lib.WindowCtrl_Init()
+        if self.e2e:
+            lib.E2E_Init()
+
+    def e2e_dtc(self):
+        """U0422-00 stored? (REQ_18)"""
+        return bool(self.e2e and self.lib.E2E_DtcActive())
 
     def clear_dtcs(self):
-        """Called by UDS 0x14: clears the stored DTCs in the C controller."""
+        """Called by UDS 0x14: clears the stored DTCs (controller + E2E, REQ_16/18)."""
         self.lib.WindowCtrl_ClearDtcs()
+        if self.e2e:
+            self.lib.E2E_ClearDtc()
 
     def step(self, t, vbat):
         # 1. receive: decode every switch message that arrived
@@ -113,6 +129,10 @@ class DCU:
                 break
             if m.arbitration_id == self.rx_switch.frame_id:
                 sig = self.rx_switch.decode(m.data)
+                if self.e2e and (self.lib.E2E_CheckCounter(int(sig["AliveCounter"]))
+                                 == sil_env.E2E_REPEATED):
+                    self.discarded += 1           # stale frame: ignore it (REQ_17)
+                    continue
                 self.sw_up, self.sw_down = bool(sig["SwUp"]), bool(sig["SwDown"])
                 self.last_rx_t = t
             elif m.arbitration_id == uds.REQ_ID:                  # diagnostics
@@ -138,6 +158,7 @@ class DCU:
                 "PinchFlag": int(self.out.pinch_flag),
                 "DTC_SwitchTimeout": int(self.out.dtc_switch_timeout),
                 "DTC_MotorOverrun": int(self.out.dtc_motor_overrun),
+                "DTC_SwitchInvalid": int(self.e2e_dtc()),
                 "CtrlState": self.out.state,
             })
             self.bus.send(can.Message(arbitration_id=self.tx_status.frame_id, data=data,
@@ -154,6 +175,7 @@ class CanTrace:
         self.db = db
         self.frames = []          # (t, can_id, bytes) - like a candump log
         self.ecu = []             # (t, motor_cmd, state, pos, sw_msg_age_ms) every 10 ms
+        self.e2e = []             # (t, e2e_dtc, frames discarded so far) every 10 ms
 
     def frames_of(self, name):
         frame_id = self.db.get_message_by_name(name).frame_id
@@ -176,7 +198,8 @@ class CanTrace:
 def run_network(lib, stop_time=5.0, sw_up=((0, 0), (1, 1)), sw_down=((0, 0),),
                 vbat=12.0, bcm_silent=None, init_pos=50.0, obstacle_active=False,
                 obstacle_pos=70.0, stall_current=10.0, diag_requests=(),
-                bcm_enabled=True, realtime=False, on_status=None):
+                bcm_enabled=True, realtime=False, on_status=None, bcm_frozen=None,
+                on_plant=None):
     """Run the virtual network.
 
     bcm_silent:    (t_start, t_end) - the BCM stops sending in this window
@@ -187,6 +210,10 @@ def run_network(lib, stop_time=5.0, sw_up=((0, 0), (1, 1)), sw_down=((0, 0),),
                    (e.g. cansend on vcan0)
     realtime:      True = wait 10 ms per step (for live SocketCAN demos)
     on_status:     optional callback(t, decoded_status) for every status frame sent
+    bcm_frozen:    (t_start, t_end) - the BCM repeats its last frame with the same
+                   AliveCounter (frozen sender, CR_04)
+    on_plant:      optional callback(plant), called once at start - lets a live demo
+                   change the obstacle while running (run_live.py command p)
     """
     db = load_dbc()
     status_msg = db.get_message_by_name("DCU_WindowStatus")
@@ -194,6 +221,8 @@ def run_network(lib, stop_time=5.0, sw_up=((0, 0), (1, 1)), sw_down=((0, 0),),
     bcm_bus, dcu_bus, log_bus, tester_bus = buses
     try:
         plant = sil_env.WindowPlant(init_pos, obstacle_active, obstacle_pos, stall_current)
+        if on_plant is not None:
+            on_plant(plant)
         bcm, dcu = BCM(bcm_bus, db), DCU(dcu_bus, db, lib, plant)
         tester = uds.Tester(list(diag_requests))
         tr = CanTrace(db)
@@ -206,7 +235,8 @@ def run_network(lib, stop_time=5.0, sw_up=((0, 0), (1, 1)), sw_down=((0, 0),),
                 time.sleep(max(0.0, t_start + t - time.monotonic()))
             silent = (not bcm_enabled or
                       (bcm_silent is not None and bcm_silent[0] <= t < bcm_silent[1]))
-            bcm.step(t, value_at(sw_up, t) > 0.5, value_at(sw_down, t) > 0.5, silent)
+            frozen = bcm_frozen is not None and bcm_frozen[0] <= t < bcm_frozen[1]
+            bcm.step(t, value_at(sw_up, t) > 0.5, value_at(sw_down, t) > 0.5, silent, frozen)
 
             responses = []                    # tester: read 0x7E8, send 0x7E0
             while True:
@@ -229,6 +259,7 @@ def run_network(lib, stop_time=5.0, sw_up=((0, 0), (1, 1)), sw_down=((0, 0),),
                 if on_status is not None and m.arbitration_id == status_msg.frame_id:
                     on_status(t, status_msg.decode(bytes(m.data), decode_choices=False))
             tr.ecu.append((t, dcu.out.motor_cmd, dcu.out.state, dcu.pos_prev, age))
+            tr.e2e.append((t, dcu.e2e_dtc(), dcu.discarded))
         return tr
     finally:
         for b in buses:

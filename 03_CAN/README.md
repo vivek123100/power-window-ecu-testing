@@ -10,9 +10,12 @@ a virtual 4-node network, automated CAN and UDS tests, and a live demo on Linux 
 | `sim/uds.py` | UDS server (in the ECU) and tester, ISO-TP framing by hand |
 | `sim/run_demo.py` | Demo: lost switch message → ERROR after 510 ms |
 | `sim/run_uds_demo.py` | Demo: read SW version, read and clear DTCs, frame by frame |
-| `sim/run_live.py` | Live demo on SocketCAN `vcan0`, I play BCM and tester |
-| `tests/test_can.py` | 8 CAN tests (cycle time, content, timeout boundary, DBC conformance) |
-| `tests/test_uds.py` | 13 UDS tests (services, DTCs, negative responses, P2 timing) |
+| `sim/run_live.py` | Live demo on SocketCAN `vcan0`: the ECU + window model (obstacle commands) |
+| `sim/bcm_live.py` | Live BCM with a real AliveCounter (hold, timed hold, freeze, cut wire) |
+| `LIVE_DEMO.md` | Step-by-step guide for the 4-terminal live demo |
+| `tests/test_can.py` | 11 CAN tests (cycle time, content, timeout boundary, DBC conformance) |
+| `tests/test_can_e2e.py` | 7 frozen-sender tests (CR_04: discard, U0422-00, recovery) |
+| `tests/test_uds.py` | 14 UDS tests (services, DTCs, negative responses, P2 timing, ISO-TP robustness) |
 
 ---
 
@@ -34,7 +37,11 @@ a virtual 4-node network, automated CAN and UDS tests, and a live demo on Linux 
 | **Timeout** | A cyclic message stops arriving for too long (here > 500 ms) |
 | **Message age** | Time since the last frame of a message arrived; the ECU compares it with the limit |
 | **AliveCounter** | Number that changes every frame, so a receiver can spot a frozen sender (E2E) |
-| **E2E protection** | End-to-end checks (counter, CRC) that a message is fresh and correct. Not implemented yet |
+| **E2E protection** | End-to-end checks (counter, CRC) that a message is fresh and correct. Here: AliveCounter check (CR_04), no CRC yet |
+| **Frozen sender** | Sender keeps repeating its last frame on time (application hung); the content is stale, the counter does not move |
+| **Stale frame** | A frame whose AliveCounter equals the last accepted one; the ECU discards it (REQ_17) |
+| **U0422-00** | DTC "invalid data received from BCM" (`C4 22 00`): 3 stale frames in a row (REQ_18) |
+| **Latched DTC** | Stays stored after the fault is gone, until UDS 0x14 clears it |
 | **BCM** | Body Control Module, here: sends the window switch request |
 | **DCU** | Door Control Unit = my power window ECU |
 | **UDS** | Unified Diagnostic Services (ISO 14229): the language of diagnostic testers |
@@ -72,7 +79,7 @@ a virtual 4-node network, automated CAN and UDS tests, and a live demo on Linux 
 `0000` release · `0100` Up · `0200` Down · `0300` both (invalid → stop)
 
 **0x210** – byte 0: WindowPos (× 0.5 %) · byte 1: bits 0–1 MotorState (0 Stop, 1 Up, 2 Down), bit 2 PinchFlag,
-bit 3 DTC_SwitchTimeout, bit 4 DTC_MotorOverrun · byte 2: CtrlState (0 IDLE … 5 ERROR).
+bit 3 DTC_SwitchTimeout, bit 4 DTC_MotorOverrun, bit 5 DTC_SwitchInvalid (U0422-00, CR_04) · byte 2: CtrlState (0 IDLE … 5 ERROR).
 Example `8C 06 03 00` = 70 %, Down, pinch, PINCH_REVERSE.
 
 **Diagnostic IDs:** 0x7E0/0x7E8 are the OBD-II standard IDs, used here for simplicity. Real ECUs get their own
@@ -83,7 +90,7 @@ pair from the car maker's diagnostic description (ODX/CDD) or use 29-bit IDs lik
 ## Automated tests
 
 ```bash
-pytest 03_CAN/tests -v        # 21 tests: 8 CAN + 13 UDS (virtual bus, simulated time)
+pytest 03_CAN/tests -v        # 32 tests: 11 CAN + 7 E2E + 14 UDS (virtual bus, simulated time)
 python3 03_CAN/sim/run_demo.py
 python3 03_CAN/sim/run_uds_demo.py
 ```
@@ -93,45 +100,20 @@ The tests use python-can's in-process virtual bus, so they are repeatable and ru
 
 ## Live demo on SocketCAN
 
-**Setup** (once; again after every WSL restart):
-```bash
-sudo modprobe vcan
-sudo ip link add dev vcan0 type vcan      # "File exists" = already there, fine
-sudo ip link set up vcan0
-ip link show vcan0                        # must show UP
-```
+Full guide with setup, all commands for the 4 terminals, demos and troubleshooting:
+**[LIVE_DEMO.md](LIVE_DEMO.md)**
 
 | Terminal | Role | Command |
 |---|---|---|
-| 1 | ECU | `CAN_INTERFACE=socketcan python3 03_CAN/sim/run_live.py 600` |
-| 2 | Bus monitor | `candump -ta vcan0` (diagnostics only: `candump -ta vcan0,7E0:7F0`) |
-| 3 | Me: BCM + tester | `cangen` / `cansend` – these never print anything |
+| 1 | ECU + window model (`p 70` = hand at 70 %) | `CAN_INTERFACE=socketcan python3 03_CAN/sim/run_live.py 1800` |
+| 2 | Bus monitor | `candump -ta vcan0` |
+| 3 | BCM = door switch (`u` `d` `r` `u 0.8` `f` `s`) | `python3 03_CAN/sim/bcm_live.py` |
+| 4 | Diagnostic tester | `cansend vcan0 7E0#031902FFAAAAAAAA` (read DTCs) |
 
-### Script
+Demos: partial opening, anti-pinch, frozen sender (CR_04), lost message, repair → clear → verify.
 
-| # | Do (Terminal 3) | Expect | Why |
-|---|---|---|---|
-| 1 | `cangen vcan0 -I 200 -L 2 -D 0200 -g 20` | T1: `MOVING_DOWN`; T2: 210 byte 0 falls | Down pressed, REQ_02 |
-| 2 | Ctrl+C within ~1.5 s | T1: `ERROR ... DTC timeout 1` after ~0.5 s; T2: 210 `xx 08 05 00` | Message lost while moving, REQ_09 |
-| 3 | `cansend vcan0 7E0#031902FFAAAAAAAA` | T2: `7E8 07 59 02 09 C1 40 00 08` | Read DTCs → U0140-00 confirmed |
-| 4 | `cansend vcan0 7E0#0414FFFFFFAAAAAA` | T2: `7E8 01 54`; T1: `DTC timeout 0` | Clear DTCs, REQ_16 |
-| 5 | `cangen vcan0 -I 200 -L 2 -D 0000 -g 20` | T1: `IDLE` | Leaving ERROR needs both switches released |
-| 6 | `cansend vcan0 7E0#0322F195AAAAAAAA` | T2: `7E8 10 0B 62 F1 95 50 57 2D`, then nothing | First Frame, ECU waits |
-| 7 | `cansend vcan0 7E0#3000000000000000` | T2: `7E8 21 31 2E 30 2E 30 AA AA` | Flow Control → rest of "PW-1.0.0" |
-| 8 | `cansend vcan0 7E0#0322123400000000` | T2: `7E8 03 7F 22 31` | Unknown DID → negative response |
-
-`cangen` options: `-I` ID, `-L` length, `-D` data, `-g` gap in ms.
-
-### Troubleshooting
-
-| Problem | Fix |
-|---|---|
-| Terminal 3 prints nothing | Normal. Look at Terminals 1 and 2 |
-| ECU reacts to nothing | Its run time is over: restart `run_live.py` |
-| `Network is down` / `No such device` | Run the setup again (`vcan0` gone after WSL restart) |
-| Up → Release gives ERROR | The gap between two `cangen` runs was > 500 ms; correct behaviour |
-| `0060` does nothing | Byte 1 is the AliveCounter; only byte 0 bits 0–1 are switches |
-| First Frame but no rest | Send the Flow Control `7E0#3000000000000000` |
+> Since CR_04, `cangen` with fixed data repeats the same AliveCounter, so the ECU treats it as a
+> **frozen sender**. Use `bcm_live.py` as the healthy BCM.
 
 ---
 
@@ -170,7 +152,8 @@ Do these without looking at the answers, then check with the live demo.
 2. The AliveCounter is never checked: no E2E protection against a frozen sender.
 3. REQ_09 does not specify the detection window (measured: 510 ms; proposal 500–520 ms).
 
-Points 1 and 3 are planned as **CR_01** (change request).
+Points 1 and 3 were fixed by **CR_01**, point 2 by **CR_04** (AliveCounter check, U0422-00).
+Still open: no CRC in the E2E check (OP_07), start-up delay for timeout monitoring (OP_06).
 
 ## Out of scope (found during scenario review, not implemented)
 
@@ -181,3 +164,9 @@ Points 1 and 3 are planned as **CR_01** (change request).
    (see regulations such as ECE R21 / FMVSS 118).
    **Decision:** not implemented in this project, because it needs new CAN signals (DBC), new requirements,
    new model states, C code and tests across all levels. Documented as a possible future **CR_02**.
+
+5. **No emergency behaviour (crash, fire).** The ECU has no crash input, so after an accident the window
+   stays where it is. Real cars react to a crash message from the airbag ECU (unlock doors, hazard lights,
+   sometimes open windows). This needs an E2E-protected crash signal and an ISO 26262 safety analysis
+   (a false trigger at speed is dangerous).
+   **Decision:** not implemented; documented as OP_05, a possible future **CR_03**.

@@ -10,13 +10,15 @@
 | REQ_06 | TC_04, TC_35 | Pass | – | – | – |
 | REQ_07 | TC_05 | Pass | – | – | – |
 | REQ_08 | TC_06, TC_07, TC_23, TC_27, TC_30, TC_33 | Pass | – | – | – |
-| REQ_09 | TC_08, TC_25, TC_32, TC_38 | Pass | – | – | – |
+| REQ_09 | TC_08, TC_20, TC_22, TC_25, TC_32, TC_37, TC_38, TC_49–TC_53, TC_61, TC_67 | Pass | – | – | – |
 | REQ_10 | TC_15, TC_16, TC_26, TC_29  | Pass | – | – | – |
 | REQ_11 | TC_09, TC_24, TC_28 | Pass | – | – | – |
 | REQ_12 | TC_17, TC_18, TC_19 | PASS | – | – | – |  
 | REQ_13 | TC_31 | Pass | – | – | – |
 | REQ_14 | TC_30, TC_31 | Pass | – | – | – |
-| REQ_15 | TC_39, TC_40, TC_41, TC_42, TC_43, TC_44, TC_46, TC_47, TC_48 | – | – | – | – | 
-| REQ_16 | TC_45 | – | – | – | – |
+| REQ_15 | TC_39, TC_40, TC_41, TC_42, TC_43, TC_44, TC_46, TC_47, TC_48, TC_65, TC_68 | – | – | – | – | 
+| REQ_16 | TC_45, TC_60, TC_66 | – | – | – | – |
+| REQ_17 | TC_54, TC_55, TC_56, TC_57, TC_61, TC_62, TC_67 | – | – | – | – |
+| REQ_18 | TC_58, TC_59, TC_60, TC_60b, TC_61, TC_63, TC_64, TC_65, TC_66 | – | – | – | – |
 
 Legend: PASS / FAIL / – (not yet run)

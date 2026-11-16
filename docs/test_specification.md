@@ -56,6 +56,23 @@ Techniques used: requirements-based testing, boundary value analysis, equivalenc
 | TC_50 | REQ_09 | Pinch, Up still held (WAIT_RELEASE) | Switch message lost from 4 s | ERROR, DTC_SwitchTimeout stored, motor stays off |
 | TC_51 | REQ_09 | Idle timeout from 2 s to 3 s, switches released | Message back at 3 s, Up pressed at 5 s | IDLE again, window moves at 5 s, DTC still stored |
 | TC_52 | REQ_09 | CAN level, BCM never sends after power-on | – | DTC_SwitchTimeout stored about 510 ms after power-on |
+| TC_53 | REQ_09 | CAN level, window idle | BCM pauses: frames 500 ms apart / 560 ms apart | 500 ms: no timeout · 560 ms: ERROR, DTC_SwitchTimeout (same boundary as TC_37/38, in IDLE) |
+| TC_54 | REQ_17 | E2E unit, after E2E_Init | First frame, counter 5 | Accepted (INITIAL) |
+| TC_55 | REQ_17 | E2E unit | Counters 0, 1, 2, 3 | All accepted (OK) |
+| TC_56 | REQ_17 | E2E unit, counter 4 accepted | Counter 4 again | Discarded (REPEATED) |
+| TC_57 | REQ_17 | E2E unit, counter 15 accepted | Counter 0 | Accepted: the wrap 15 → 0 is a change |
+| TC_58 | REQ_18 | E2E unit | Same counter: 2 repeats, then a 3rd | After 2: no DTC · after the 3rd: DTC (boundary) |
+| TC_59 | REQ_18 | E2E unit | 2 repeats, 1 fresh frame, 2 repeats | No DTC: repeats must be in a row |
+| TC_60 | REQ_18, REQ_16 | E2E unit, DTC stored | Fresh frames, then E2E_ClearDtc | DTC stays with fresh frames; cleared only by the clear |
+| TC_60b | REQ_18 | E2E unit | 300 identical frames | Still REPEATED, no counter overflow (robustness) |
+| TC_61 | REQ_17, REQ_18, REQ_09 | CAN level, closing from 10 % | BCM frozen from 2 s (keeps sending, same frame) | U0422-00 at about 2.04 s (3rd stale frame); ERROR 500–520 ms after the last fresh frame |
+| TC_62 | REQ_17 | As TC_61 | Frozen frames say "Up pressed" | Motor off from 2.55 s: stale frames do not keep the window moving |
+| TC_63 | REQ_18 | CAN level, closing | BCM frozen for 2 frames only (2.00–2.04 s) | 2 frames discarded, no DTC, window keeps moving (boundary) |
+| TC_64 | REQ_18 | As TC_61 | Read DCU_WindowStatus | DTC_SwitchInvalid (byte 1 bit 5) = 0 before, 1 after the freeze |
+| TC_65 | REQ_18, REQ_15 | As TC_61 | Tester at 3 s: 19 02 FF | U0140-00 and U0422-00, 11 bytes → multi-frame (FF + FC + CF) |
+| TC_66 | REQ_16, REQ_18 | Freeze 2.0–2.6 s, Up released at 2.8 s | Tester: 14 FF FF FF at 3 s, 19 02 FF at 3.5 s | 54, then no DTC; status bit 5 = 0 |
+| TC_67 | REQ_17, REQ_09 | Freeze 2.0–2.6 s, Up held until 2.8 s | Fresh frames back at 2.6 s | ERROR at 2.7 s (Up still held), IDLE at 3.0 s; U0422-00 stays stored |
+| TC_68 | REQ_15 | ISO-TP receiver | Same Consecutive Frame twice; unsolicited frames on 0x7E8 | Duplicate CF dropped (no crash), next message works; tester ignores frames it did not ask for |
 
 
 ## Coverage justifications
@@ -79,21 +96,24 @@ Note: TC_26 and TC_29 use sensor fault injection that exists only in the SIL pla
 
 ## Static analysis
 - cppcheck (`--enable=all`): no findings except `unusedFunction` for WindowCtrl_Init/Step (called from the test harness; expected).
-- cppcheck MISRA C:2012 addon (`--enable=style`): 2 findings, both Rule 8.7 (advisory) -> deviation below. Addon verified with a self-test file containing known violations (Rules 7.1, 8.4, 14.4, 15.1, 15.6).
+- cppcheck MISRA C:2012 addon (`--enable=style`), on `window_ctrl.c` and `e2e_counter.c`: only Rule 8.7 (advisory) findings for the public interface functions -> deviation below. Addon verified with a self-test file containing known violations (Rules 7.1, 8.4, 14.4, 15.1, 15.6).
 - Note: cppcheck covers a subset of MISRA rules; a full compliance claim would need a commercial tool (e.g. Polyspace, QA-C) would be needed for a full compliance claim.
 
 ### MISRA deviations
 | ID | Rule | Location | Justification |
 |---|---|---|---|
-| DEV_01 | 8.7 (advisory) | `WindowCtrl_Init`, `WindowCtrl_Step` | Public module interface declared in `window_ctrl.h`, called from other translation units (test harness, later the main loop). Making them `static` would break the module. Suppressed in `02_SIL/misra_suppressions.txt`. |
+| DEV_01 | 8.7 (advisory) | `WindowCtrl_Init`, `WindowCtrl_Step`; `E2E_Init`, `E2E_CheckCounter`, `E2E_DtcActive`, `E2E_ClearDtc` (CR_04) | Public module interface declared in `window_ctrl.h`, called from other translation units (test harness, later the main loop). Making them `static` would break the module. Suppressed in `02_SIL/misra_suppressions.txt`. |
 
 Test levels per test case
 | Level	| Where |	Test cases | 
 |---|---|---|
 | MIL |	01_MIL/tests/run_mil_tests.m |	TC_01–TC_16, TC_19–TC_22 |
-| SIL	| 02_SIL/tests/test_window_ctrl.py	| TC_01–TC_16, TC_19–TC_36 |
+| SIL	| 02_SIL/tests/test_window_ctrl.py	| TC_01–TC_16, TC_19–TC_36, TC_49–TC_51 |
+| SIL unit (E2E module) | 02_SIL/tests/test_e2e_counter.py | TC_54–TC_60b |
 | Back-to-back	| 02_SIL/tests/test_back_to_back.py	| all MIL test cases |
-| CAN (virtual bus)	| 03_CAN/tests/test_can.py | TC_08, TC_17, TC_18, TC_19, TC_37, TC_38 + DBC conformance + AliveCounter |
-| UDS (virtual bus) | 03_CAN/tests/test_uds.py | TC_39–TC_48 |
+| CAN (virtual bus)	| 03_CAN/tests/test_can.py | TC_08, TC_17, TC_18, TC_19, TC_37, TC_38, TC_52, TC_53 + DBC conformance + AliveCounter |
+| CAN E2E (virtual bus) | 03_CAN/tests/test_can_e2e.py | TC_61–TC_67 |
+| UDS (virtual bus) | 03_CAN/tests/test_uds.py | TC_39–TC_48, TC_68 |
+| Live (manual) | 03_CAN/LIVE_DEMO.md | demos A–E on SocketCAN vcan0 |
 
 Timing note (REQ_09): the timeout is detected 510 ms after the last message (first 10 ms check with age > 500 ms). Recommended requirement update: "detected within 500–520 ms".

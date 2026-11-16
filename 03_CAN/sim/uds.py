@@ -13,6 +13,7 @@ UDS services supported by the DCU (request -> positive response = SID + 0x40):
   0x22 ReadDataByIdentifier       22 F1 95 (SW ver)  -> 62 F1 95 'PW-1.0.0'
                                   22 01 00 (window position, live) -> 62 01 00 pp
   0x19 ReadDTCInformation         19 02 FF           -> 59 02 09 [DTC DTC DTC status]...
+                                  (U0140-00, B1310-00, U0422-00)
   0x14 ClearDiagnosticInformation 14 FF FF FF        -> 54
   0x3E TesterPresent              3E 00              -> 7E 00
 Negative response: 7F SID NRC  (0x11 service not supported, 0x12 sub-function
@@ -30,6 +31,7 @@ DID_WINDOW_POS = 0x0100
 # DTC numbers (3 bytes: 2 bytes code + 1 byte failure type, SAE J2012 style)
 DTC_SWITCH_TIMEOUT = bytes([0xC1, 0x40, 0x00])   # U0140-00: lost communication with BCM
 DTC_MOTOR_OVERRUN = bytes([0x93, 0x10, 0x00])    # B1310-00: window motor overrun
+DTC_SWITCH_INVALID = bytes([0xC4, 0x22, 0x00])   # U0422-00: invalid data received from BCM (CR_04)
 STATUS_MASK_AVAILABLE = 0x09                      # testFailed + confirmedDTC
 STATUS_CONFIRMED = 0x08
 
@@ -67,6 +69,7 @@ class IsoTpReceiver:
 
     def __init__(self):
         self.buf, self.expected, self.next_seq = b"", 0, 1
+        self.errors = 0                                   # dropped messages (sequence errors)
 
     def feed(self, data):
         """Returns ('done', payload), ('send_fc', None) or (None, None)."""
@@ -78,13 +81,17 @@ class IsoTpReceiver:
             self.buf, self.next_seq = bytes(data[2:8]), 1
             return "send_fc", None
         if kind == 2:                                     # consecutive frame
-            if (data[0] & 0xF) != self.next_seq:
-                raise ValueError(f"ISO-TP sequence error: got {data[0] & 0xF}, "
-                                 f"expected {self.next_seq}")
+            if self.expected == 0 or (data[0] & 0xF) != self.next_seq:
+                # unexpected or out-of-order CF (e.g. two ECUs answering on one ID):
+                # drop the message instead of crashing - a real receiver aborts and waits
+                self.buf, self.expected, self.next_seq = b"", 0, 1
+                self.errors += 1
+                return "error", None
             self.next_seq = (self.next_seq + 1) & 0xF
             self.buf += bytes(data[1:8])
             if len(self.buf) >= self.expected:
-                return "done", self.buf[:self.expected]
+                payload, self.expected = self.buf[:self.expected], 0
+                return "done", payload
         return None, None
 
 
@@ -136,7 +143,8 @@ class UdsServer:
             resp = bytes([0x59, 0x02, STATUS_MASK_AVAILABLE])
             out = self.dcu.out
             for active, code in ((out.dtc_switch_timeout, DTC_SWITCH_TIMEOUT),
-                                 (out.dtc_motor_overrun, DTC_MOTOR_OVERRUN)):
+                                 (out.dtc_motor_overrun, DTC_MOTOR_OVERRUN),
+                                 (self.dcu.e2e_dtc(), DTC_SWITCH_INVALID)):
                 if active and (STATUS_CONFIRMED & req[2]):
                     resp += code + bytes([STATUS_CONFIRMED])
             return resp
@@ -172,6 +180,8 @@ class Tester:
         """received: frames on RESP_ID this step. Returns frames to send."""
         out = []
         for data in received:
+            if self.current is None:
+                continue                   # not waiting for an answer: ignore the frame
             status, payload = self.rx.feed(data)
             if status == "send_fc":
                 out.append(FLOW_CONTROL_CTS)
