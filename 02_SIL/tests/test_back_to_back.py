@@ -110,7 +110,7 @@ def compare(mil, sil):
 def save_sil_csv(tc, tr):
     SIL_DIR.mkdir(parents=True, exist_ok=True)
     with open(SIL_DIR / f"{tc}.csv", "w", newline="") as f:
-        w = csv.writer(f)
+        w = csv.writer(f, lineterminator="\n")    # LF, like the rest of the repo
         w.writerow(["t"] + SIGNALS)
         for k, t in enumerate(tr.t):
             w.writerow([t] + [tr.sig[s][k] for s in SIGNALS])
