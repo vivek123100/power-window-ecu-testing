@@ -6,7 +6,7 @@
 | Method | independent re-run from a fresh clone of GitHub, scripted traceability audit, code coverage (gcov), mutation testing, code review, requirement validation against FMVSS 118 |
 | Reviewer | Claude (AI assistant), on request of the project owner, not part of the implementation of this review's findings |
 | Verdict | **Verification passed with findings. Validation: suitable as a test-engineering demonstrator, not as a product specification** (see section 4) |
-| Resolution | **CR_05 (17 Nov 2026): all verification findings fixed and re-verified, mutation score 21 / 21; validation findings recorded as OP_08–OP_10** (see section 7) |
+| Resolution | **CR_05 (17 Nov 2026, PR #4): all verification findings fixed and re-verified on the reviewer PC and the owner's laptop (109 + 13 / 13 HIL), mutation score 21 / 21; validation findings recorded as OP_08–OP_10** (see section 7) |
 
 **Verification** = did we build it right (code and tests match the requirements, results reproducible)?
 **Validation** = did we build the right thing (are the requirements right for a real power window)?
@@ -164,7 +164,7 @@ repeated runs; TC_78 and TC_87 pass. Recorded in the field guide as B6.
 | Branch coverage `window_ctrl.c` (gcov) | 94.8 % | **96.7 %** (rest: defensive `default:` and counter saturation) |
 | PIL sample (incl. TC_81–TC_86, back-to-back) | 17 / 17 | **35 / 35** |
 | HIL, reviewer PC (TCP bridge) | 11 passed, 1 inconclusive | **12 passed, 1 inconclusive** (TC_75, 5 s window; known emulator limit) |
-| HIL, owner's laptop (vcan0) | 12 / 12 | _to be re-run by the owner: `bash 05_HIL/run_hil.sh` (13 tests)_ |
+| HIL, owner's laptop (vcan0) | 12 / 12 | **13 / 13 passed**, no repetitions (17 Nov 2026) |
 
 Remaining note: the Stateflow model may contain the same redundant message-age term as F-01. It does not change
 behaviour (back-to-back identical) and can be cleaned up at the next model change.
