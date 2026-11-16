@@ -2,10 +2,18 @@
 
 ![SIL tests](https://github.com/vivek123100/power-window-ecu-testing/actions/workflows/sil-tests.yml/badge.svg)
 
-A power window ECU with anti-pinch protection, verified along the V-model: from requirements through
+A power window ECU with anti-pinch protection, verified along the **V-model**: from requirements through
 **Model-in-the-Loop**, **Software-in-the-Loop**, a **CAN/UDS network**, **Processor-in-the-Loop** on an STM32 and a
-**mini Hardware-in-the-Loop** bench (ECU firmware as a real-time CAN node), with automated tests,
-back-to-back comparison, coverage, static analysis and CI. Personal learning and portfolio project.
+**mini Hardware-in-the-Loop** bench, with automated tests, back-to-back comparison, coverage, static analysis and CI.
+Personal portfolio project: MATLAB/Simulink for MIL, open-source tools for everything else.
+
+> **Skills shown:** ECU software testing · test automation (Python/pytest) · MIL/SIL/PIL/HIL · requirements-based
+> testing and traceability · Simulink/Stateflow · embedded C (STM32, bare metal) · CAN, DBC, UDS (ISO 14229), ISO-TP ·
+> E2E protection · fault injection · code coverage · MISRA C:2012 · CI/CD (GitHub Actions) · change requests
+
+> **About PIL/HIL:** the STM32 is **emulated** (Renode) and the bus is Linux SocketCAN (`vcan0`); there is no physical
+> bench yet. The firmware is real ARM code built with the target compiler, and the HIL tests run in real time on the bus,
+> but analog I/O is replaced by CAN messages and timing on the emulator is an estimate (see [`05_HIL/`](05_HIL)).
 
 | | |
 |---|---|
@@ -23,12 +31,12 @@ back-to-back comparison, coverage, static analysis and CI. Personal learning and
 
 ```mermaid
 flowchart LR
-  REQ["Requirements<br/>18 REQ · 68 TC"] --> MIL["MIL<br/>Simulink / Stateflow<br/>23 / 23 pass"]
+  REQ["Requirements<br/>18 REQ · 80 TC"] --> MIL["MIL<br/>Simulink / Stateflow<br/>23 / 23 pass"]
   MIL --> SIL["SIL<br/>C99 + pytest<br/>48 tests"]
   MIL -. "back-to-back<br/>23 scenarios" .- SIL
   SIL --> CAN["CAN + UDS + E2E<br/>virtual bus + SocketCAN<br/>32 tests"]
   CAN --> PIL["PIL<br/>STM32F407 on Renode<br/>103 tests · 23/23 identical"]
-  PIL --> HIL["Mini-HIL<br/>firmware as CAN node on vcan0<br/>12 real-time tests"]
+  PIL --> HIL["Mini-HIL<br/>firmware as CAN node on vcan0<br/>12 / 12 real-time tests"]
 ```
 
 The same test cases run at every level; only the "in-the-loop" part changes.
@@ -97,16 +105,22 @@ bash 04_PIL/run_pil.sh                      # PIL: same tests on the emulated ST
 bash 05_HIL/run_hil.sh                      # HIL: ECU firmware as a CAN node on vcan0, real-time tests
 ```
 
+PIL and HIL also need the ARM compiler and Renode (`sudo apt install gcc-arm-none-eabi libnewlib-arm-none-eabi`,
+Renode 1.17 portable), see [`04_PIL/README.md`](04_PIL/README.md); HIL needs `vcan0` (set up by `run_hil.sh`).
+
 MIL: open `01_MIL/model/PowerWindow_MIL.slx` in MATLAB/Simulink and run `run_mil_tests` from `01_MIL/tests/`.
 The live SocketCAN demo (4 terminals) is described in [`03_CAN/LIVE_DEMO.md`](03_CAN/LIVE_DEMO.md).
 
 CI (GitHub Actions) runs the MISRA check, all SIL/CAN/UDS tests, back-to-back and the coverage gate on every push.
+PIL and HIL run locally (they need Renode).
 
 ## Documents
 
 - [Requirements](docs/requirements.md) · [Test specification](docs/test_specification.md) · [Traceability](docs/traceability.md)
 - [CAN / UDS guide with glossary and exercises](03_CAN/README.md) · [Live demo guide](03_CAN/LIVE_DEMO.md)
-- [Real-world CAN and diagnostic issues (field guide)](docs/real_world_issues.md)
+- [PIL guide](04_PIL/README.md) · [HIL guide](05_HIL/README.md)
+- Reports: [MIL test report](reports/MIL_test_report.md) · [back-to-back MIL vs. SIL](reports/b2b/b2b_report.md) · [MIL vs. PIL](reports/b2b/b2b_pil_report.md)
+- [Real-world CAN and diagnostic issues (field guide)](docs/real_world_issues.md): problems met while building this, and how they are found and prevented in practice
 - [Tools and skills log](docs/tools_and_skills.md)
 
 ## Tools
@@ -117,7 +131,7 @@ CAN · DBC · E2E (AliveCounter) · cantools · python-can · SocketCAN · can-u
 ## Project structure
 
 ```
-docs/       requirements, test specification, traceability, tools log
+docs/       requirements, test specification, traceability, field guide, tools log
 01_MIL/     Simulink/Stateflow model + MATLAB test harness
 02_SIL/     C controller (src/) + pytest harness, back-to-back (tests/)
 03_CAN/     DBC, virtual CAN network, UDS, live SocketCAN demo, CAN/UDS tests
