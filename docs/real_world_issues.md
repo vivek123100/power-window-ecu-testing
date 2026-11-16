@@ -191,6 +191,13 @@ _Started 14 Nov 2026 – add every new issue you meet at work._
 - **Prevented by:** knowing what each test level can prove: PIL in an emulator proves the compiler and code, real timing needs hardware.
 - **This project:** Renode doesn't model the DWT cycle counter (always 0), so execution time is measured with SysTick, and only as an estimate.
 
+### E7. Line endings (Windows CRLF vs. Linux LF)
+- **What you see:** a shell script fails with `$'\r': command not found` or `set: -e\r`; Git shows dozens of "modified" files nobody touched.
+- **Cause:** Windows uses CRLF, Linux LF. Git on Windows (`core.autocrlf`) or a tool's default (Python's `csv` module writes CRLF) converts files.
+- **How it's found:** `file script.sh` ("with CRLF line terminators"), `git ls-files --eol`, `git diff --ignore-cr-at-eol` (empty = only line endings).
+- **Prevented by:** a `.gitattributes` with `* text=auto eol=lf` in every mixed Windows/Linux repo; explicit `lineterminator="\n"` in generated files.
+- **This project:** after merging PR #2 the shell scripts and the Makefile were checked out with CRLF, and every test run "modified" 23 CSV files. Fixed with `.gitattributes` + `git add --renormalize .` and LF in the CSV writer.
+
 ---
 
 ## Quick checklist when something "doesn't work"
