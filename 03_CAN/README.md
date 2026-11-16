@@ -13,8 +13,9 @@ a virtual 4-node network, automated CAN and UDS tests, and a live demo on Linux 
 | `sim/run_live.py` | Live demo on SocketCAN `vcan0`: the ECU + window model (obstacle commands) |
 | `sim/bcm_live.py` | Live BCM with a real AliveCounter (hold, timed hold, freeze, cut wire) |
 | `LIVE_DEMO.md` | Step-by-step guide for the 4-terminal live demo |
-| `tests/test_can.py` | 8 CAN tests (cycle time, content, timeout boundary, DBC conformance) |
-| `tests/test_uds.py` | 13 UDS tests (services, DTCs, negative responses, P2 timing) |
+| `tests/test_can.py` | 11 CAN tests (cycle time, content, timeout boundary, DBC conformance) |
+| `tests/test_can_e2e.py` | 7 frozen-sender tests (CR_04: discard, U0422-00, recovery) |
+| `tests/test_uds.py` | 14 UDS tests (services, DTCs, negative responses, P2 timing, ISO-TP robustness) |
 
 ---
 
@@ -36,7 +37,11 @@ a virtual 4-node network, automated CAN and UDS tests, and a live demo on Linux 
 | **Timeout** | A cyclic message stops arriving for too long (here > 500 ms) |
 | **Message age** | Time since the last frame of a message arrived; the ECU compares it with the limit |
 | **AliveCounter** | Number that changes every frame, so a receiver can spot a frozen sender (E2E) |
-| **E2E protection** | End-to-end checks (counter, CRC) that a message is fresh and correct. Not implemented yet |
+| **E2E protection** | End-to-end checks (counter, CRC) that a message is fresh and correct. Here: AliveCounter check (CR_04), no CRC yet |
+| **Frozen sender** | Sender keeps repeating its last frame on time (application hung); the content is stale, the counter does not move |
+| **Stale frame** | A frame whose AliveCounter equals the last accepted one; the ECU discards it (REQ_17) |
+| **U0422-00** | DTC "invalid data received from BCM" (`C4 22 00`): 3 stale frames in a row (REQ_18) |
+| **Latched DTC** | Stays stored after the fault is gone, until UDS 0x14 clears it |
 | **BCM** | Body Control Module, here: sends the window switch request |
 | **DCU** | Door Control Unit = my power window ECU |
 | **UDS** | Unified Diagnostic Services (ISO 14229): the language of diagnostic testers |
@@ -74,7 +79,7 @@ a virtual 4-node network, automated CAN and UDS tests, and a live demo on Linux 
 `0000` release · `0100` Up · `0200` Down · `0300` both (invalid → stop)
 
 **0x210** – byte 0: WindowPos (× 0.5 %) · byte 1: bits 0–1 MotorState (0 Stop, 1 Up, 2 Down), bit 2 PinchFlag,
-bit 3 DTC_SwitchTimeout, bit 4 DTC_MotorOverrun · byte 2: CtrlState (0 IDLE … 5 ERROR).
+bit 3 DTC_SwitchTimeout, bit 4 DTC_MotorOverrun, bit 5 DTC_SwitchInvalid (U0422-00, CR_04) · byte 2: CtrlState (0 IDLE … 5 ERROR).
 Example `8C 06 03 00` = 70 %, Down, pinch, PINCH_REVERSE.
 
 **Diagnostic IDs:** 0x7E0/0x7E8 are the OBD-II standard IDs, used here for simplicity. Real ECUs get their own
@@ -85,7 +90,7 @@ pair from the car maker's diagnostic description (ODX/CDD) or use 29-bit IDs lik
 ## Automated tests
 
 ```bash
-pytest 03_CAN/tests -v        # 21 tests: 8 CAN + 13 UDS (virtual bus, simulated time)
+pytest 03_CAN/tests -v        # 32 tests: 11 CAN + 7 E2E + 14 UDS (virtual bus, simulated time)
 python3 03_CAN/sim/run_demo.py
 python3 03_CAN/sim/run_uds_demo.py
 ```
@@ -147,7 +152,8 @@ Do these without looking at the answers, then check with the live demo.
 2. The AliveCounter is never checked: no E2E protection against a frozen sender.
 3. REQ_09 does not specify the detection window (measured: 510 ms; proposal 500–520 ms).
 
-Points 1 and 3 are planned as **CR_01** (change request).
+Points 1 and 3 were fixed by **CR_01**, point 2 by **CR_04** (AliveCounter check, U0422-00).
+Still open: no CRC in the E2E check (OP_07), start-up delay for timeout monitoring (OP_06).
 
 ## Out of scope (found during scenario review, not implemented)
 
@@ -158,3 +164,9 @@ Points 1 and 3 are planned as **CR_01** (change request).
    (see regulations such as ECE R21 / FMVSS 118).
    **Decision:** not implemented in this project, because it needs new CAN signals (DBC), new requirements,
    new model states, C code and tests across all levels. Documented as a possible future **CR_02**.
+
+5. **No emergency behaviour (crash, fire).** The ECU has no crash input, so after an accident the window
+   stays where it is. Real cars react to a crash message from the airbag ECU (unlock doors, hazard lights,
+   sometimes open windows). This needs an E2E-protected crash signal and an ISO 26262 safety analysis
+   (a false trigger at speed is dangerous).
+   **Decision:** not implemented; documented as OP_05, a possible future **CR_03**.

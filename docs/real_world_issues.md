@@ -75,6 +75,7 @@ _Started 14 Nov 2026 – add every new issue you meet at work._
 - **Cause:** two ECUs configured to send the same ID (copy-paste in the network database, wrong variant).
 - **How it's found:** the trace shows the same ID with two different content patterns or cycle times.
 - **Prevented by:** one central communication matrix (DBC/ARXML) for the whole vehicle.
+- **This project (seen live, 16 Nov 2026):** an old `run_live.py` was still running, so two ECUs sent 0x210 and answered on 0x7E8. The trace alternated between two window positions (100 % ERROR and a moving window). Fix: `pkill -f run_live.py`, then check the bus is quiet with `candump vcan0,210:7FF` before starting. On a real bench this happens when two test PCs or two restbus simulations are connected to the same bus.
 
 ---
 
@@ -130,6 +131,20 @@ _Started 14 Nov 2026 – add every new issue you meet at work._
 - **How it's found:** the ECU only answers in programming session; the bootloader reports an invalid application.
 - **Prevented by:** stable power supply during flashing, a bootloader that can always restart the download.
 - **This project:** not covered (no flashing).
+
+### D5. DTC comes back right after clearing
+- **What you see:** UDS 0x14 answers `54` (cleared), but the same DTC is stored again a moment later.
+- **Cause:** the fault is still present. Clearing only erases the fault memory, it repairs nothing. The ECU checks again and stores it again.
+- **How it's found:** read DTCs again a few seconds after clearing; check the cause (wiring, sender) first.
+- **Prevented by:** the workshop order **repair → clear → verify**.
+- **This project:** clearing U0422-00 while the BCM was still frozen: `invalid 1` came straight back (LIVE_DEMO.md, demo E).
+
+### D6. Diagnostic receiver crashes on unexpected frames
+- **What you see:** the tester or the ECU stops working when strange frames appear on the diagnostic ID.
+- **Cause:** the ISO-TP receiver trusts the bus: a duplicate or out-of-order consecutive frame, or an answer nobody asked for, is treated as a fatal error.
+- **How it's found:** robustness tests with duplicate, missing and unsolicited frames; two ECUs on one ID (B5).
+- **Prevented by:** abort the message and wait for the next First Frame (ISO 15765-2 behaviour); ignore frames when no request is pending.
+- **This project:** found live with two ECUs on vcan0 (`ISO-TP sequence error` crash); fixed in `uds.py`, regression test TC_68.
 
 ---
 
