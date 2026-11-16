@@ -17,12 +17,12 @@ Techniques used: requirements-based testing, boundary value analysis, equivalenc
 | TC_11 | REQ_02, REQ_04 | Pos = 0% | Press Down | Motor stays off |
 | TC_12 | REQ_02 | Pos = 1 % | Press Down | Motor Down |
 | TC_13 | REQ_03 | Moving up, Pos = 50 % | Release switch | Motor Stop within 50ms |
-| TC_14	| REQ_03 | Moving down, pos = 50 % | Release switch |	Motor Stop within 50 ms |
-| TC_15 | REQ_10 | Motor blocked (position not changing) |	Hold Up for 7.9 s |	Motor still running, no DTC |
-| TC_16	| REQ_10 |	Motor blocked | Hold Up for 8.1 s |	Motor Stop, DTC_MOTOR_OVERRUN stored |
+| TC_14 | REQ_03 | Moving down, pos = 50 % | Release switch | Motor Stop within 50 ms |
+| TC_15 | REQ_10 | Motor blocked (position not changing) | Hold Up for 7.9 s | Motor still running, no DTC |
+| TC_16 | REQ_10 | Motor blocked | Hold Up for 8.1 s | Motor Stop, DTC_MOTOR_OVERRUN stored |
 | TC_17 | REQ_12 | CAN level (virtual bus), ECU running | Record DCU_WindowStatus (0x210) for 10 s | Cycle time 100 ms ±10 ms for every frame |
 | TC_18 | REQ_12 | CAN level, window moving up from 30 % | Read DCU_WindowStatus at 1.4 s | WindowPos = real position (±0.5 %, about 40 %), MotorState Up, PinchFlag 0, CtrlState MOVING_UP, no DTC |
-| TC_19 | REQ_12, REQ_14 | Pinch detected (as in TC_04) | Read status message |	Pinch flag = 1 |
+| TC_19 | REQ_12, REQ_14 | Pinch detected (as in TC_04) | Read status message | Pinch flag = 1 |
 | TC_20 | REQ_09 | Pinch reversal active (current = 8.1 A, pos = 50 %) | Switch message missing for 600 ms | Motor Stop, DTC_SwitchTimeout stored |
 | TC_21 | REQ_13, REQ_14 | Obstacle at = 70 %, pos = 50 % | Hold Up for the whole test | Pinch reversal to ~50 %, then motor stays 0 while Up is held; PinchFlag stays 1 |
 | TC_22 | REQ_09 | ERROR after switch message lost (as TC_08), Up still held | Message returns at 5 s, Up released at 6 s | 5–6 s: motor stays 0 (no restart); after 6 s: state IDLE, no movement |
@@ -37,6 +37,8 @@ Techniques used: requirements-based testing, boundary value analysis, equivalenc
 | TC_31 | REQ_13, REQ_14 | Pinch, Up held until 4 s | Release Up at 4 s, press again at 5 s | PinchFlag 1 at 3.9 s, 0 at 4.1 s, state IDLE; motor up again within 50 ms of new press | 
 | TC_32 | REQ_09 | Idle, switch message missing from start | Press Up (and separately Down) | Motor never starts | 
 | TC_33 | REQ_08 | Idle, Vbat 16.5 V from start | Press Up (and separately Down) | “Motor never starts; ERROR, DTC_SwitchTimeout stored (CR_01)” | 
+| TC_32b | REQ_09 | Idle, switch message missing from start | Press Down | Motor never starts (Down variant of TC_32) |
+| TC_33b | REQ_08 | Idle, Vbat 16.5 V from start | Press Down | Motor never starts (Down variant of TC_33) |
 | TC_34 | REQ_05 | Window at 2 %, obstacle at 3 % | Hold Up | Blocked at 3 % (below pinch zone): no pinch, no reversal | 
 | TC_35 | REQ_06 | Window at 5 %, obstacle at 10 % | Hold Up | Pinch at 10 %, reversal ends at 0 % (less than 20 % available), motor stops | 
 | TC_36 | REQ_03 | Moving down | At 2 s: Down released and Up pressed in the same cycle | Motor stops first (no direct reversal of direction) |
@@ -85,6 +87,13 @@ Techniques used: requirements-based testing, boundary value analysis, equivalenc
 | TC_78 | REQ_15, REQ_16 | HIL: BCM silent 1.0–1.7 s | 19 02 FF at 2.5 s, 14 FF FF FF at 3.0 s, 19 02 FF at 3.5 s | U0140-00, then 54, then no DTC (UDS in the firmware) |
 | TC_79 | REQ_15, REQ_18 | HIL: frozen 1.0–1.7 s while closing | 19 02 FF at 2.5 s | U0140-00 + U0422-00 = 11 bytes as First Frame + Flow Control + Consecutive Frame |
 | TC_80 | REQ_15 | HIL: ECU idle | 22 F1 95, 22 F1 FF, 31 01 02 03, 3E 00, 10 03 | "PW-1.0.0" (multi-frame), 7F 22 31, 7F 31 11, 7E 00, 50 03 00 32 01 F4; each first response ≤ 50 ms (P2) |
+| TC_81 | REQ_07 | Window at 95 %, obstacle at 97 %, stall 9 A | Hold Up | Blocked at 97 %: no pinch, no reversal (V&V F-02: real upper-boundary test) |
+| TC_82 | REQ_05 | Window at 90 %, obstacle at 95 %, stall 9 A | Hold Up | Pinch and reversal (just inside the zone) |
+| TC_83 | REQ_16 | Blocked motor → B1310-00 stored | 19 02 FF at 10 s, 14 FF FF FF at 10.5 s, 19 02 FF at 11 s | B1310-00, then 54, then no DTC; status DTC_MotorOverrun 0 (V&V F-03) |
+| TC_84 | REQ_05 | Closing, pos 50 % | Current exactly 8.0 A | No pinch ("more than 8 A"; V&V F-07) |
+| TC_85 | REQ_08 | Battery exactly 16.0 V | Press Up | Motor Up within 50 ms (only above 16 V forbidden; V&V F-07) |
+| TC_86 | REQ_17 | E2E unit | Counters 3, 11, 11 | INITIAL, OK (jump = lost frames, accepted), REPEATED (V&V F-08) |
+| TC_87 | – (HIL robustness) | HIL: closing from 10 % | Sensor frames 0x300 stop at 1.5 s | Motor off ≤ 150 ms, sensor-timeout flag in 0x301, no CAN RX overruns (V&V F-09) |
 
 
 ## Coverage justifications
@@ -94,12 +103,14 @@ Techniques used: requirements-based testing, boundary value analysis, equivalenc
 
 Coverage results (SIL, gcov)
 
-After TC_23–TC_36: 96 % line coverage, 97 % branch coverage. Before: 81 % lines.
+After TC_23–TC_36: 96 % line coverage, 97 % branch coverage (gcovr). Before: 81 % lines.
+
+Re-measured in the V&V review with gcov: CR_01 had left 2 branches that could never be taken (F-01, 94.8 % branches taken). After CR_05: **96.3 % lines, 96.7 % branches taken** (`window_ctrl.c`), 100 % / 100 % (`e2e_counter.c`).
 
 Not covered:
-default: in enter_state() and WindowCtrl_Step()	
+default: in enter_state() and WindowCtrl_Step() 
 Reason: Defensive code for an invalid state value (e.g. memory corruption). Unreachable in normal operation.
-Not covered: s_ticks saturation (s_ticks < UINT16_MAX false branch)	
+Not covered: s_ticks saturation (s_ticks < UINT16_MAX false branch) 
 Reason: Only reached after > 655 s in one state (e.g. long IDLE). Protects against counter overflow. Candidate for a long-duration test later.
 
 Note: TC_26 and TC_29 use sensor fault injection that exists only in the SIL plant (pos_stuck_from). They are SIL-only until the MIL plant gets the same fault input.
@@ -117,17 +128,17 @@ Note: TC_26 and TC_29 use sensor fault injection that exists only in the SIL pla
 | DEV_01 | 8.7 (advisory) | `WindowCtrl_Init`, `WindowCtrl_Step`; `E2E_Init`, `E2E_CheckCounter`, `E2E_DtcActive`, `E2E_ClearDtc` (CR_04) | Public module interface declared in `window_ctrl.h`, called from other translation units (test harness, later the main loop). Making them `static` would break the module. Suppressed in `02_SIL/misra_suppressions.txt`. |
 
 Test levels per test case
-| Level	| Where |	Test cases | 
+| Level | Where | Test cases | 
 |---|---|---|
-| MIL |	01_MIL/tests/run_mil_tests.m |	TC_01–TC_16, TC_19–TC_22 |
-| SIL	| 02_SIL/tests/test_window_ctrl.py	| TC_01–TC_16, TC_19–TC_36, TC_49–TC_51 |
-| SIL unit (E2E module) | 02_SIL/tests/test_e2e_counter.py | TC_54–TC_60b |
-| Back-to-back	| 02_SIL/tests/test_back_to_back.py	| all MIL test cases |
-| CAN (virtual bus)	| 03_CAN/tests/test_can.py | TC_08, TC_17, TC_18, TC_19, TC_37, TC_38, TC_52, TC_53 + DBC conformance + AliveCounter |
+| MIL | 01_MIL/tests/run_mil_tests.m | TC_01–TC_16, TC_19–TC_22 |
+| SIL | 02_SIL/tests/test_window_ctrl.py | TC_01–TC_16, TC_19–TC_36, TC_49–TC_51, TC_81, TC_82, TC_84, TC_85 |
+| SIL unit (E2E module) | 02_SIL/tests/test_e2e_counter.py | TC_54–TC_60b, TC_86 |
+| Back-to-back | 02_SIL/tests/test_back_to_back.py | all MIL test cases |
+| CAN (virtual bus) | 03_CAN/tests/test_can.py | TC_08, TC_17, TC_18, TC_19, TC_37, TC_38, TC_52, TC_53 + DBC conformance + AliveCounter |
 | CAN E2E (virtual bus) | 03_CAN/tests/test_can_e2e.py | TC_61–TC_67 |
-| UDS (virtual bus) | 03_CAN/tests/test_uds.py | TC_39–TC_48, TC_68 |
+| UDS (virtual bus) | 03_CAN/tests/test_uds.py | TC_39–TC_48, TC_68, TC_83 |
 | Live (manual) | 03_CAN/LIVE_DEMO.md | demos A–E on SocketCAN vcan0 |
-| HIL (firmware as CAN node on vcan0) | 05_HIL/tests/test_hil.py (`bash 05_HIL/run_hil.sh`) | TC_69–TC_80, real time, measured on the bus |
+| HIL (firmware as CAN node on vcan0) | 05_HIL/tests/test_hil.py (`bash 05_HIL/run_hil.sh`) | TC_69–TC_80, TC_87, real time, measured on the bus |
 | PIL (STM32F407 in Renode) | `TARGET=pil` + 02_SIL/tests, 03_CAN/tests (`bash 04_PIL/run_pil.sh`) | all SIL, CAN, E2E and UDS test cases (103 tests); back-to-back MIL vs. PIL |
 
 Timing note (REQ_09): the timeout is detected 510 ms after the last message (first 10 ms check with age > 500 ms). Recommended requirement update: "detected within 500–520 ms".
@@ -140,5 +151,5 @@ Timing note (REQ_09): the timeout is detected 510 ms after the last message (fir
 ## HIL notes
 - Every test powers on a fresh ECU; the bench (plant, BCM, tester) runs a 10 ms real-time loop; results come from CAN frame timestamps.
 - Test-system health: the ECU's 10 ms frames and the bench loop must be on time (≤ 15 ms late) during each measurement. Otherwise the run is repeated (up to 3 times) and finally reported SKIPPED "INCONCLUSIVE", never as an ECU result.
-- Result on my laptop (vcan0, 16 Nov 2026): 12 / 12 passed, no repetitions needed.
+- Result on my laptop (vcan0, 16 Nov 2026): 12 / 12 passed, no repetitions needed. TC_87 added in CR_05.
 

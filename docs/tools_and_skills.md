@@ -105,6 +105,8 @@ _Last updated: 14 Nov 2026 (MIL, SIL, CAN/UDS complete; CR_01 implemented, 87 te
 | Code coverage analysis (statement, branch) | ✅ | Found 9 untested transitions + 5 untested conditions; added TC_23–TC_36; justified defensive code |
 | Sensor fault injection | ✅ | Stuck position sensor in the SIL plant to reach overrun protection while opening and during pinch reversal |
 | MISRA C:2012 | ✅ | Coding style followed (named constants, braces, `else` on every chain, `break` on every case); deviation process (DEV_01) |
+| Mutation testing | ✅ | Planted 21 bugs in the C code one at a time; 16 killed at first, 5 survivors showed real test gaps (exact boundaries, pinch-zone limit, clear of all DTCs, counter jump); closed with TC_81–TC_87 |
+| Independent V&V review | ✅ | Fresh-clone re-run of all levels, scripted traceability audit, gcov branch analysis (found dead code left by a change request), requirement validation against FMVSS 118 (force vs. current, reversal distance, block detection) |
 | Tool qualification ("test the test tool") | ✅ | Found that the MISRA check reported 0 findings because it was misconfigured; proved it with a known-bad file |
 | Continuous integration with quality gates | ✅ | Build fails on new MISRA findings, test failures, model/code mismatch or coverage < 90 % |
 | Functional safety awareness (ISO 26262) | ✅ basic | Anti-pinch treated as a safety function; no re-closing on a trapped obstacle |

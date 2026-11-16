@@ -9,7 +9,7 @@ Personal portfolio project: MATLAB/Simulink for MIL, open-source tools for every
 
 > **Skills shown:** ECU software testing · test automation (Python/pytest) · MIL/SIL/PIL/HIL · requirements-based
 > testing and traceability · Simulink/Stateflow · embedded C (STM32, bare metal) · CAN, DBC, UDS (ISO 14229), ISO-TP ·
-> E2E protection · fault injection · code coverage · MISRA C:2012 · CI/CD (GitHub Actions) · change requests
+> E2E protection · fault injection · code coverage · mutation testing · MISRA C:2012 · CI/CD (GitHub Actions) · change requests
 
 > **About PIL/HIL:** the STM32 is **emulated** (Renode) and the bus is Linux SocketCAN (`vcan0`); there is no physical
 > bench yet. The firmware is real ARM code built with the target compiler, and the HIL tests run in real time on the bus,
@@ -17,26 +17,27 @@ Personal portfolio project: MATLAB/Simulink for MIL, open-source tools for every
 
 | | |
 |---|---|
-| Requirements | **18** (incl. two change requests, CR_01 and CR_04) |
-| Test cases | **80**, traced to requirements |
-| Automated tests | **103** on every push (SIL, back-to-back, CAN, UDS) + **12** real-time HIL tests + **23** MIL tests in MATLAB |
+| Requirements | **18** (change requests CR_01, CR_04, CR_05) |
+| Test cases | **90**, traced to requirements |
+| Automated tests | **109** on every push (SIL, back-to-back, CAN, UDS) + **13** real-time HIL tests + **23** MIL tests in MATLAB |
 | Model vs. code | **100 % identical**, every signal every 10 ms: MIL vs. SIL **and** MIL vs. PIL (back-to-back) |
-| On the target | same 103 tests on an **STM32F407** (Cortex-M4F, Renode emulator); worst step time < 1 µs of 10 ms |
-| HIL | ECU firmware (bxCAN driver, UDS + ISO-TP in C) on vcan0, measured on the bus: reaction ≤ 50 ms, timeout 500–520 ms, cycle 100 ± 10 ms; **12 / 12 pass** |
-| Code coverage | **96 % lines** (only defensive code uncovered) |
+| On the target | same 109 tests on an **STM32F407** (Cortex-M4F, Renode emulator); worst step time < 1 µs of 10 ms |
+| HIL | ECU firmware (bxCAN driver, UDS + ISO-TP in C) on vcan0, measured on the bus: reaction ≤ 50 ms, timeout 500–520 ms, cycle 100 ± 10 ms; **13 / 13 pass** |
+| Code coverage | **96 % lines, 96.7 % branches** (only defensive code uncovered) |
+| Independent V&V | fresh-clone re-run, **mutation testing** (21 planted bugs), requirement validation vs. FMVSS 118: 11 findings, fixed in CR_05 ([report](docs/vv_report.md)) |
 | Static analysis | cppcheck + MISRA C:2012 addon, 1 documented deviation |
-| Defects found | **11** (design, code, model, test tool, requirements, robustness) |
+| Defects found | **12** (design, code, model, test tool, requirements, robustness) + 5 test gaps found by mutation testing |
 
 ## How it fits together
 
 ```mermaid
 flowchart LR
-  REQ["Requirements<br/>18 REQ · 80 TC"] --> MIL["MIL<br/>Simulink / Stateflow<br/>23 / 23 pass"]
-  MIL --> SIL["SIL<br/>C99 + pytest<br/>48 tests"]
+  REQ["Requirements<br/>18 REQ · 90 TC"] --> MIL["MIL<br/>Simulink / Stateflow<br/>23 / 23 pass"]
+  MIL --> SIL["SIL<br/>C99 + pytest<br/>53 tests"]
   MIL -. "back-to-back<br/>23 scenarios" .- SIL
-  SIL --> CAN["CAN + UDS + E2E<br/>virtual bus + SocketCAN<br/>32 tests"]
-  CAN --> PIL["PIL<br/>STM32F407 on Renode<br/>103 tests · 23/23 identical"]
-  PIL --> HIL["Mini-HIL<br/>firmware as CAN node on vcan0<br/>12 / 12 real-time tests"]
+  SIL --> CAN["CAN + UDS + E2E<br/>virtual bus + SocketCAN<br/>33 tests"]
+  CAN --> PIL["PIL<br/>STM32F407 on Renode<br/>109 tests · 23/23 identical"]
+  PIL --> HIL["Mini-HIL<br/>firmware as CAN node on vcan0<br/>13 / 13 real-time tests"]
 ```
 
 The same test cases run at every level; only the "in-the-loop" part changes.
@@ -63,13 +64,13 @@ Controller states: `IDLE`, `MOVING_UP`, `MOVING_DOWN`, `PINCH_REVERSE`, `WAIT_RE
 | Level | What runs | Where | Result |
 |---|---|---|---|
 | **MIL** | Stateflow controller + plant model, automated harness, fault injection | [`01_MIL/`](01_MIL) | 23 / 23 pass ([report](reports/MIL_test_report.md)) |
-| **SIL** | Hand-written C99 controller via ctypes, Python plant, pytest | [`02_SIL/`](02_SIL) | 48 tests pass (40 controller + 8 E2E unit) |
+| **SIL** | Hand-written C99 controller via ctypes, Python plant, pytest | [`02_SIL/`](02_SIL) | 53 tests pass (44 controller + 9 E2E unit) |
 | **Back-to-back** | MIL reference data vs. SIL, all signals every 10 ms | `02_SIL/tests/test_back_to_back.py` | 23 / 23 identical |
 | **CAN** | DBC, 4-node virtual network (BCM, ECU, tester, logger), cycle times, timeouts | [`03_CAN/`](03_CAN) | 18 tests pass (incl. 7 frozen-sender tests) |
-| **UDS** | ISO-TP + UDS server in the ECU: read data, read/clear DTCs, negative responses, P2 | [`03_CAN/`](03_CAN) | 14 tests pass |
+| **UDS** | ISO-TP + UDS server in the ECU: read data, read/clear DTCs, negative responses, P2 | [`03_CAN/`](03_CAN) | 15 tests pass |
 | **Live** | ECU in real time on Linux SocketCAN `vcan0`: live BCM, pinch, frozen sender, UDS by hand | [`03_CAN/LIVE_DEMO.md`](03_CAN/LIVE_DEMO.md) | manual demos A–E |
-| **PIL** | Same tests, controller cross-compiled for an STM32F407 (bare metal, UART link), run in the Renode emulator; execution time measured | [`04_PIL/`](04_PIL) | 103 tests pass, MIL vs. PIL 23 / 23 identical |
-| **HIL** | ECU firmware runs on its own (1 ms clock, bxCAN, UDS in C) on SocketCAN; real-time plant, BCM and tester on the PC; bench health check (inconclusive instead of false results) | [`05_HIL/`](05_HIL) | 12 / 12 pass |
+| **PIL** | Same tests, controller cross-compiled for an STM32F407 (bare metal, UART link), run in the Renode emulator; execution time measured | [`04_PIL/`](04_PIL) | 109 tests pass, MIL vs. PIL 23 / 23 identical |
+| **HIL** | ECU firmware runs on its own (1 ms clock, bxCAN, UDS in C) on SocketCAN; real-time plant, BCM and tester on the PC; bench health check (inconclusive instead of false results) | [`05_HIL/`](05_HIL) | 13 / 13 pass |
 
 ## What testing found
 
@@ -86,6 +87,7 @@ Controller states: `IDLE`, `MOVING_UP`, `MOVING_DOWN`, `PINCH_REVERSE`, `WAIT_RE
 | 9 | Live SocketCAN test | Dead BCM not detected while the window was idle | Change request **CR_01**, TC_49 – TC_53 |
 | 10 | Scenario review | Frozen sender: stale "Up pressed" frames arriving on time kept the window moving (AliveCounter never checked) | Change request **CR_04**: E2E check, U0422-00, TC_54 – TC_67 |
 | 11 | Live SocketCAN test | Two ECUs on one bus crashed the diagnostic receiver (duplicate ISO-TP frame) | Robust ISO-TP receiver, TC_68 |
+| 12 | Independent V&V review | Dead code left by CR_01 (always-true condition, MISRA Rule 14.3) – **missed by the MISRA tool** | Removed in **CR_05**; plus 5 test gaps found by mutation testing closed with TC_81 – TC_87 |
 
 Open points and out-of-scope items (CRC for E2E, start-up delay, engine-off / locking behaviour, crash behaviour) are
 listed in [`docs/requirements.md`](docs/requirements.md).
@@ -97,7 +99,7 @@ listed in [`docs/requirements.md`](docs/requirements.md).
 python3 -m venv .venv && source .venv/bin/activate
 pip install pytest gcovr cantools python-can
 sudo apt install -y gcc cppcheck            # static analysis
-bash run_all.sh                             # MISRA + 103 tests + coverage gate (>= 90 %)
+bash run_all.sh                             # MISRA + 109 tests + coverage gate (>= 90 %)
 
 python3 03_CAN/sim/run_demo.py              # lost CAN message -> ERROR after 510 ms
 python3 03_CAN/sim/run_uds_demo.py          # UDS session frame by frame
@@ -116,7 +118,7 @@ PIL and HIL run locally (they need Renode).
 
 ## Documents
 
-- [Requirements](docs/requirements.md) · [Test specification](docs/test_specification.md) · [Traceability](docs/traceability.md)
+- [Requirements](docs/requirements.md) · [Test specification](docs/test_specification.md) · [Traceability](docs/traceability.md) · [V&V report](docs/vv_report.md)
 - [CAN / UDS guide with glossary and exercises](03_CAN/README.md) · [Live demo guide](03_CAN/LIVE_DEMO.md)
 - [PIL guide](04_PIL/README.md) · [HIL guide](05_HIL/README.md)
 - Reports: [MIL test report](reports/MIL_test_report.md) · [back-to-back MIL vs. SIL](reports/b2b/b2b_report.md) · [MIL vs. PIL](reports/b2b/b2b_pil_report.md)

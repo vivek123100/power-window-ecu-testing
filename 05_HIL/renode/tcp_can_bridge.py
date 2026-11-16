@@ -5,8 +5,11 @@
 # CreateSocketCANBridge instead - see hil.resc.
 #
 # Each CAN frame on the TCP stream = 13 bytes:  u32 id (little endian), u8 dlc, 8 data bytes.
-# Frames the ECU sends (can1.FrameSent) go to the client; frames from the client
-# are delivered to can1 at the next synchronised point of virtual time.
+# Frames the ECU sends (can1.FrameSent) go to the client. Frames from the client are
+# delivered to can1 at least FRAME_GAP_US apart in virtual time, like on a real bus
+# (an 8-byte frame takes ~0.25 ms at 500 kbit/s). Without this, frames that queued up
+# while the emulator was busy would all arrive in the same instant and overflow the
+# 3-deep hardware FIFO - something a real bus can't do (V&V re-run, CR_05).
 import clr
 for _asm in ("System.Net.Primitives", "System.Net.Sockets", "System.Threading.Thread"):
     clr.AddReference(_asm)          # .NET assemblies are not loaded by default
@@ -15,9 +18,10 @@ from System.Net import IPAddress
 from System.Net.Sockets import TcpListener
 from System.Threading import Thread, ThreadStart
 from Antmicro.Renode.Core.CAN import CANMessageFrame
-from Antmicro.Renode.Time import TimeStamp
+from Antmicro.Renode.Time import TimeStamp, TimeInterval
 
 FRAME_LEN = 13
+FRAME_GAP_US = 250
 
 
 def start_tcp_can_bridge(machine, can_name, port):
@@ -45,9 +49,20 @@ def start_tcp_can_bridge(machine, can_name, port):
 
     can.FrameSent += on_sent
 
+    pace = {"next_us": 0.0}
+
+    def schedule(frame):
+        # runs in the emulation thread: place the frame on the virtual time line
+        now = machine.LocalTimeSource.ElapsedVirtualTime.TotalMicroseconds
+        at = max(now, pace["next_us"])
+        pace["next_us"] = at + FRAME_GAP_US
+        delay = TimeInterval.FromMicroseconds(int(at - now))
+        machine.ScheduleAction(delay, Action[TimeInterval](lambda t: can.OnFrameReceived(frame)),
+                               "tcp_can_rx")
+
     def deliver(frame):
         machine.LocalTimeSource.ExecuteInNearestSyncedState(
-            Action[TimeStamp](lambda ts: can.OnFrameReceived(frame)), False)
+            Action[TimeStamp](lambda ts: schedule(frame)), False)
 
     def serve():
         while True:

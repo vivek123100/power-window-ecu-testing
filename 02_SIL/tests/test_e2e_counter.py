@@ -67,3 +67,10 @@ def test_TC_60b_long_freeze_no_overflow(e2e):
     assert set(results[1:]) == {E2E_REPEATED}
     assert e2e.E2E_DtcActive()
     assert feed(e2e, [10]) == [E2E_OK]
+
+
+def test_TC_86_counter_jump_accepted(e2e):
+    """REQ_17 (V&V F-08): lost frames make the counter jump (3 -> 11) - a change, accepted;
+    only the same counter again is a repeat"""
+    assert feed(e2e, [3, 11, 11]) == [E2E_INITIAL, E2E_OK, E2E_REPEATED]
+

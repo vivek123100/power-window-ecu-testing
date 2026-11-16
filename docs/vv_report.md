@@ -6,6 +6,7 @@
 | Method | independent re-run from a fresh clone of GitHub, scripted traceability audit, code coverage (gcov), mutation testing, code review, requirement validation against FMVSS 118 |
 | Reviewer | Claude (AI assistant), on request of the project owner, not part of the implementation of this review's findings |
 | Verdict | **Verification passed with findings. Validation: suitable as a test-engineering demonstrator, not as a product specification** (see section 4) |
+| Resolution | **CR_05 (17 Nov 2026): all verification findings fixed and re-verified, mutation score 21 / 21; validation findings recorded as OP_08–OP_10** (see section 7) |
 
 **Verification** = did we build it right (code and tests match the requirements, results reproducible)?
 **Validation** = did we build the right thing (are the requirements right for a real power window)?
@@ -120,3 +121,51 @@ safety-relevant mutant that changes normal behaviour (pinch threshold, reversal,
 2. F-02, F-03, F-07, F-08: four to five new test cases; re-run mutation testing (target: all non-equivalent mutants killed).
 3. F-10 documentation commit.
 4. F-04, F-05, F-06: record as open validation points (they need real hardware or a product decision).
+
+---
+
+## 7. Resolution (CR_05, 17 Nov 2026)
+
+| ID | Status | What was done | Evidence |
+|---|---|---|---|
+| F-01 | ✅ fixed | Redundant `msg_ok()` removed from the two IDLE conditions; no behaviour change | all 109 tests pass, back-to-back MIL vs. SIL still 23 / 23 identical; branches taken 94.8 → **96.7 %** |
+| F-02 | ✅ fixed | TC_81 (blocked at 97 % → no pinch), TC_82 (blocked at 95 % → pinch) | M08 now killed by TC_81 |
+| F-03 | ✅ fixed | TC_83: B1310-00 stored → 14 FF FF FF → no DTC | M14 now killed by TC_83 |
+| F-04 | 📋 open point | OP_08 in `requirements.md` (force vs. current, needs real hardware) | – |
+| F-05 | 📋 open point | OP_09 (reversal distance in mm) | – |
+| F-06 | 📋 open point | OP_10 (block detection in every zone) | – |
+| F-07 | ✅ fixed | TC_84 (exactly 8.0 A → no pinch), TC_85 (exactly 16.0 V → runs) | M02, M06 now killed |
+| F-08 | ✅ fixed | TC_86 (counter jump 3 → 11 accepted) | M21 now killed |
+| F-09 | ✅ fixed | HIL firmware: sensor frame timeout 100 ms → safe state, RX overrun counter in 0x301; TC_87 | TC_87 passes |
+| F-10 | ✅ fixed | README/spec counts, coverage figures, 6 traceability links, TC_32b/33b in the spec, skipped placeholder removed, REQ_14 typo, tab characters | scripted audit re-run |
+| F-11 | ✅ fixed | Timing measurement points defined in `requirements.md` | – |
+
+### 7.1 New finding during the re-verification (F-12)
+
+The overrun counter added for F-09 showed **1 lost CAN frame at every power-on**, and in one run a **lost UDS request**
+(TC_78 failed: no answer to the last read). Two causes:
+
+1. The HIL firmware emptied the 3-deep bxCAN receive FIFO only every 1 ms (polling). On a real 500 kbit/s bus up to
+   ~4 frames can arrive per ms, so this design can lose frames on a busy bus too.
+2. The TCP bridge delivered frames that had queued up during an emulator pause all in the same instant.
+
+And the bench tester had **no response timeout**: a lost request would have blocked all later requests.
+
+Fixes: CAN RX interrupt that moves every frame into a 16-entry queue at once; frames spaced 0.25 ms apart in the TCP
+bridge (one frame time on a real bus); tester timeout 0.5 s (P2*), reported as "no answer". Result: 0 overruns in
+repeated runs; TC_78 and TC_87 pass. Recorded in the field guide as B6.
+
+### 7.2 Re-verification
+
+| Check | Before CR_05 | After CR_05 |
+|---|---|---|
+| SIL + CAN + UDS + back-to-back | 103 passed, 1 skipped | **109 passed, 0 skipped** |
+| Mutation score | 16 / 21 (76 %) | **21 / 21 (100 %)**, each former survivor killed by its new test |
+| Branch coverage `window_ctrl.c` (gcov) | 94.8 % | **96.7 %** (rest: defensive `default:` and counter saturation) |
+| PIL sample (incl. TC_81–TC_86, back-to-back) | 17 / 17 | **35 / 35** |
+| HIL, reviewer PC (TCP bridge) | 11 passed, 1 inconclusive | **12 passed, 1 inconclusive** (TC_75, 5 s window; known emulator limit) |
+| HIL, owner's laptop (vcan0) | 12 / 12 | _to be re-run by the owner: `bash 05_HIL/run_hil.sh` (13 tests)_ |
+
+Remaining note: the Stateflow model may contain the same redundant message-age term as F-01. It does not change
+behaviour (back-to-back identical) and can be cleaned up at the next model change.
+

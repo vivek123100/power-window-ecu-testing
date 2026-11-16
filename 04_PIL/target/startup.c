@@ -21,8 +21,10 @@ void Default_Handler(void);
  * define one, Default_Handler is used. Shared by PIL (04_PIL) and HIL (05_HIL). */
 void SysTick_Handler(void)   __attribute__((weak, alias("Default_Handler")));
 void USART2_IRQHandler(void) __attribute__((weak, alias("Default_Handler")));
+void CAN1_RX0_IRQHandler(void) __attribute__((weak, alias("Default_Handler")));
 
-#define IRQ_USART2   (38)                                /* STM32F4 interrupt number */
+#define IRQ_CAN1_RX0 (20)                                /* STM32F4 interrupt numbers */
+#define IRQ_USART2   (38)
 #define N_VECTORS    (16 + 82)                           /* 16 core + 82 STM32F407 IRQs */
 
 #define SCB_CPACR (*(volatile uint32_t *)0xE000ED88U)   /* coprocessor access control */
@@ -47,7 +49,7 @@ void Default_Handler(void)
 }
 
 /* Vector table: placed at the start of flash by the linker script.
- * Used: SysTick (HIL 1 ms tick) and USART2 receive (PIL). */
+ * Used: SysTick (HIL 1 ms tick), CAN1 RX FIFO 0 (HIL) and USART2 receive (PIL). */
 __attribute__((section(".isr_vector"), used))
 const void *const g_vectors[N_VECTORS] =
 {
@@ -64,7 +66,9 @@ const void *const g_vectors[N_VECTORS] =
     0,                     /* 13 reserved              */
     Default_Handler,       /* 14 PendSV                */
     SysTick_Handler,       /* 15 SysTick               */
-    [16 ... (16 + IRQ_USART2 - 1)] = Default_Handler,   /* IRQs 0..37: unused       */
+    [16 ... (16 + IRQ_CAN1_RX0 - 1)] = Default_Handler, /* IRQs 0..19: unused       */
+    [16 + IRQ_CAN1_RX0] = CAN1_RX0_IRQHandler,          /* IRQ 20: CAN1 RX FIFO 0   */
+    [(16 + IRQ_CAN1_RX0 + 1) ... (16 + IRQ_USART2 - 1)] = Default_Handler,
     [16 + IRQ_USART2] = USART2_IRQHandler,              /* IRQ 38: USART2           */
     [(16 + IRQ_USART2 + 1) ... (N_VECTORS - 1)] = Default_Handler,
 };

@@ -80,6 +80,17 @@ def test_TC_45_clear_dtcs(ctrl):
     assert last_status["DTC_SwitchTimeout"] == 0, "status message still shows the DTC"
 
 
+def test_TC_83_clear_removes_overrun_dtc(ctrl):
+    """REQ_16 (V&V F-03): "all DTCs" - B1310-00 (overrun) is cleared too"""
+    requests = [(10.0, READ_DTCS), (10.5, CLEAR_DTCS), (11.0, READ_DTCS)]
+    tr, tester = diag(ctrl, requests, obstacle_active=True, stall_current=7.9, stop_time=11.5)
+    reads = [resp for t_req, req, t_resp, resp in tester.log if req == READ_DTCS]
+    assert dtcs_in(reads[0]) == ["B1310-00"], "overrun DTC not stored before clearing"
+    assert tester.response_to(CLEAR_DTCS) == bytes([0x54])
+    assert dtcs_in(reads[1]) == [], "B1310-00 still stored after clearing"
+    assert tr.decoded("DCU_WindowStatus")[-1][1]["DTC_MotorOverrun"] == 0
+
+
 @pytest.mark.parametrize("tc, req, expected", [
     ("TC_46 extended session", bytes([0x10, 0x03]), bytes([0x50, 0x03, 0x00, 0x32, 0x01, 0xF4])),
     ("TC_46 tester present", bytes([0x3E, 0x00]), bytes([0x7E, 0x00])),
@@ -93,7 +104,7 @@ def test_service_responses(ctrl, tc, req, expected):
     assert tester.response_to(req) == expected, tc
 
 
-def test_response_time_p2(ctrl):
+def test_TC_48_response_time_p2(ctrl):
     """REQ_15: every response starts within P2 = 50 ms"""
     requests = [(0.5, SW_VERSION), (0.8, READ_DTCS), (1.1, bytes([0x3E, 0x00]))]
     tr, tester = diag(ctrl, requests, stop_time=1.5)

@@ -110,11 +110,6 @@ def test_TC_16_blocked_8_1s_stop_and_dtc(ctrl):
     assert tr.val_at("dtc_motor_overrun", 9.1) == 1
 
 
-@pytest.mark.skip(reason="TC_17/TC_18: CAN status message - tested in the CAN/HIL step")
-def test_TC_17_18_status_message():
-    """REQ_12"""
-
-
 def test_TC_19_pinch_flag_set(ctrl):
     """REQ_12, REQ_14"""
     tr = simulate(ctrl, obstacle_active=True)
@@ -296,3 +291,33 @@ def test_TC_51_idle_timeout_recovery(ctrl):
     t = tr.first_t("motor_cmd", lambda v: v == 1, 5.0)
     assert t is not None and t - 5.0 <= 0.05, "window does not work after recovery"
     assert tr.val_at("dtc_switch_timeout", 11.0) == 1, "DTC must stay stored"
+
+
+# ---------------------------------------------------------------- CR_05: V&V findings F-02, F-07
+def test_TC_81_no_pinch_blocked_at_97_percent(ctrl):
+    """REQ_07 (V&V F-02): blocked at 97 % with 9 A -> no reversal (seal zone above 96 %)"""
+    tr = simulate(ctrl, init_pos=95, obstacle_active=True, obstacle_pos=97, stall_current=9)
+    assert max(tr.values("pinch_flag")) == 0
+    assert -1 not in tr.values("motor_cmd")
+
+
+def test_TC_82_pinch_blocked_at_95_percent(ctrl):
+    """REQ_05 (V&V F-02): blocked at 95 % with 9 A -> pinch and reversal (just inside the zone)"""
+    tr = simulate(ctrl, init_pos=90, obstacle_active=True, obstacle_pos=95, stall_current=9)
+    assert max(tr.values("pinch_flag")) == 1
+    assert -1 in tr.values("motor_cmd")
+
+
+def test_TC_84_stall_exactly_8_0A_no_pinch(ctrl):
+    """REQ_05 (V&V F-07): "more than 8 A" -> exactly 8.0 A is not a pinch"""
+    tr = simulate(ctrl, obstacle_active=True, stall_current=8.0)
+    assert max(tr.values("pinch_flag")) == 0
+    assert -1 not in tr.values("motor_cmd")
+
+
+def test_TC_85_vbat_exactly_16_0V_motor_runs(ctrl):
+    """REQ_08 (V&V F-07): only above 16 V the motor must not run -> 16.0 V runs"""
+    tr = simulate(ctrl, vbat=((0, 16.0),))
+    t = tr.first_t("motor_cmd", lambda v: v == 1, 1.0)
+    assert t is not None and t - 1.0 <= 0.05
+

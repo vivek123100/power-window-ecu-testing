@@ -15,7 +15,7 @@ a virtual 4-node network, automated CAN and UDS tests, and a live demo on Linux 
 | `LIVE_DEMO.md` | Step-by-step guide for the 4-terminal live demo |
 | `tests/test_can.py` | 11 CAN tests (cycle time, content, timeout boundary, DBC conformance) |
 | `tests/test_can_e2e.py` | 7 frozen-sender tests (CR_04: discard, U0422-00, recovery) |
-| `tests/test_uds.py` | 14 UDS tests (services, DTCs, negative responses, P2 timing, ISO-TP robustness) |
+| `tests/test_uds.py` | 15 UDS tests (services, DTCs, clear of all DTCs, negative responses, P2 timing, ISO-TP robustness) |
 
 ---
 
@@ -90,7 +90,7 @@ pair from the car maker's diagnostic description (ODX/CDD) or use 29-bit IDs lik
 ## Automated tests
 
 ```bash
-pytest 03_CAN/tests -v        # 32 tests: 11 CAN + 7 E2E + 14 UDS (virtual bus, simulated time)
+pytest 03_CAN/tests -v        # 33 tests: 11 CAN + 7 E2E + 15 UDS (virtual bus, simulated time)
 python3 03_CAN/sim/run_demo.py
 python3 03_CAN/sim/run_uds_demo.py
 ```

@@ -67,8 +67,14 @@
 #define MSR_INAK        (1U << 0)
 #define TSR_TME0        (1U << 26)
 #define RF0R_FMP0       (3U << 0)
+#define RF0R_FOVR0      (1U << 4)                   /* FIFO overrun: a frame was lost */
 #define RF0R_RFOM0      (1U << 5)
 #define TIR_TXRQ        (1U << 0)
+#define CAN_IER         REG(CAN1_BASE + 0x014U)
+#define IER_FMPIE0      (1U << 1)                   /* interrupt: frame in FIFO 0 */
+#define NVIC_ISER0      REG(0xE000E100U)
+#define IRQ_CAN1_RX0    (20U)
+#define RXQ_SIZE        (16U)                       /* software queue, power of 2 */
 #define WAIT_LIMIT      (100000U)                   /* never hang forever on a register */
 
 /* ---- Message IDs ------------------------------------------------------- */
@@ -79,6 +85,7 @@
 
 #define TASK_MS         (10U)                       /* controller cycle  */
 #define STATUS_MS       (100U)                      /* REQ_12            */
+#define SENSOR_TIMEOUT_MS (100U)                    /* V&V F-09: 0x300 missing -> safe state */
 
 typedef struct
 {
@@ -93,6 +100,16 @@ static bool     s_sw_up, s_sw_down;                 /* last ACCEPTED switch fram
 static uint32_t s_last_switch_ms;                   /* CR_01 option A: 0 = power-on */
 static float    s_pos_pct, s_current_a, s_vbat_v;   /* last sensor frame (0 = safe: no voltage) */
 static uint32_t s_rx_discarded;                     /* stale frames (E2E)          */
+static uint32_t s_last_sensor_ms;                   /* last 0x300 frame            */
+static bool     s_sensor_ok;                        /* a 0x300 frame came in time  */
+static volatile uint8_t s_rx_overruns;              /* CAN RX FIFO overruns (V&V F-09) */
+
+/* RX path (CR_05): the interrupt empties the 3-deep hardware FIFO into this queue at once, so a
+ * burst of frames (up to ~4 per ms at 500 kbit/s) is not lost while main waits for the next tick. */
+typedef struct { uint32_t id; uint8_t dlc; uint8_t data[8]; } RxEntry_t;
+static RxEntry_t        s_rxq[RXQ_SIZE];
+static volatile uint32_t s_rxq_head;                /* written by the interrupt */
+static uint32_t          s_rxq_tail;                /* read by main             */
 
 void SysTick_Handler(void);
 void SysTick_Handler(void)
@@ -133,22 +150,53 @@ static void can_init(void)
 
     CAN_MCR &= ~MCR_INRQ;                           /* normal mode */
     (void)wait_msr(MSR_INAK, 0U);
+
+    CAN_IER |= IER_FMPIE0;                          /* interrupt when a frame arrives */
+    NVIC_ISER0 = (1U << IRQ_CAN1_RX0);
+}
+
+void CAN1_RX0_IRQHandler(void);
+void CAN1_RX0_IRQHandler(void)
+{
+    if ((CAN_RF0R & RF0R_FOVR0) != 0U)              /* hardware FIFO overflowed: count it */
+    {
+        CAN_RF0R = RF0R_FOVR0;                      /* clear the flag (write 1)           */
+        if (s_rx_overruns < 255U) { s_rx_overruns++; }
+    }
+    while ((CAN_RF0R & RF0R_FMP0) != 0U)
+    {
+        const uint32_t rir = CAN_RI0R;
+        const uint32_t lo  = CAN_RDL0R;
+        const uint32_t hi  = CAN_RDH0R;
+        const uint32_t dlc = CAN_RDT0R & 0xFU;
+        CAN_RF0R = RF0R_RFOM0;                      /* release the hardware FIFO entry */
+        if ((s_rxq_head - s_rxq_tail) >= RXQ_SIZE)  /* software queue full: lost too   */
+        {
+            if (s_rx_overruns < 255U) { s_rx_overruns++; }
+            continue;
+        }
+        RxEntry_t *e = &s_rxq[s_rxq_head & (RXQ_SIZE - 1U)];
+        e->id  = rir >> 21;                         /* standard 11-bit id */
+        e->dlc = (uint8_t)dlc;
+        for (uint32_t i = 0U; i < 4U; i++)
+        {
+            e->data[i]      = (uint8_t)(lo >> (8U * i));
+            e->data[i + 4U] = (uint8_t)(hi >> (8U * i));
+        }
+        __asm volatile ("" ::: "memory");           /* entry complete before the index moves */
+        s_rxq_head++;
+    }
 }
 
 static bool can_receive(CanFrame_t *f)
 {
-    if ((CAN_RF0R & RF0R_FMP0) == 0U) { return false; }
-    const uint32_t rir = CAN_RI0R;
-    const uint32_t lo = CAN_RDL0R;
-    const uint32_t hi = CAN_RDH0R;
-    f->id  = rir >> 21;                             /* standard 11-bit id */
-    f->dlc = (uint8_t)(CAN_RDT0R & 0xFU);
-    for (uint32_t i = 0U; i < 4U; i++)
-    {
-        f->data[i]      = (uint8_t)(lo >> (8U * i));
-        f->data[i + 4U] = (uint8_t)(hi >> (8U * i));
-    }
-    CAN_RF0R |= RF0R_RFOM0;                         /* release the FIFO entry */
+    if (s_rxq_tail == s_rxq_head) { return false; }
+    __asm volatile ("" ::: "memory");               /* read the entry after the index */
+    const RxEntry_t *e = &s_rxq[s_rxq_tail & (RXQ_SIZE - 1U)];
+    f->id  = e->id;
+    f->dlc = e->dlc;
+    for (uint32_t i = 0U; i < 8U; i++) { f->data[i] = e->data[i]; }
+    s_rxq_tail++;
     return true;
 }
 
@@ -197,6 +245,8 @@ static void handle_frame(const CanFrame_t *f)
         s_pos_pct   = (float)get_u16(&f->data[0]) * 0.01f;
         s_current_a = (float)get_u16(&f->data[2]) * 0.01f;
         s_vbat_v    = (float)get_u16(&f->data[4]) * 0.01f;
+        s_last_sensor_ms = s_ms;
+        s_sensor_ok = true;
     }
     else if (f->id == UDS_REQ_ID)
     {
@@ -210,12 +260,14 @@ static void handle_frame(const CanFrame_t *f)
 
 static void send_actuators(const WindowOutputs_t *out, uint32_t step_ticks)
 {
-    uint8_t d[4];
+    uint8_t d[6];
     d[0] = (uint8_t)out->motor_cmd;                 /* int8: 1 up, -1 down, 0 stop */
     d[1] = (uint8_t)out->state;
     d[2] = (uint8_t)step_ticks;                     /* execution time of the step  */
     d[3] = (uint8_t)(step_ticks >> 8);
-    (void)Can_Send(ID_ACTUATORS, d, 4U);
+    d[4] = s_rx_overruns;                           /* lost CAN frames (V&V F-09)  */
+    d[5] = s_sensor_ok ? 0U : 1U;                   /* bit 0: sensor frame timeout */
+    (void)Can_Send(ID_ACTUATORS, d, 6U);
 }
 
 static void send_status(const WindowOutputs_t *out)
@@ -255,7 +307,7 @@ int main(void)
     for (;;)
     {
         CanFrame_t f;
-        while (can_receive(&f))                     /* empty the RX FIFO every 1 ms */
+        while (can_receive(&f))                     /* frames queued by the RX interrupt */
         {
             handle_frame(&f);
         }
@@ -265,11 +317,15 @@ int main(void)
         if ((int32_t)(now - next_task_ms) >= 0)     /* 10 ms task */
         {
             next_task_ms += TASK_MS;
+            if ((now - s_last_sensor_ms) > SENSOR_TIMEOUT_MS)
+            {
+                s_sensor_ok = false;                /* sensors lost: never drive on old values */
+            }
             in.sw_up = s_sw_up;
             in.sw_down = s_sw_down;
             in.pos_pct = s_pos_pct;
             in.current_a = s_current_a;
-            in.vbat_v = s_vbat_v;
+            in.vbat_v = s_sensor_ok ? s_vbat_v : 0.0f;   /* no sensors -> "no voltage" -> motor off */
             in.sw_msg_age_ms = (float)(now - s_last_switch_ms);
 
             const uint32_t t0 = SYST_CVR;
@@ -288,6 +344,6 @@ int main(void)
                 send_status(&out);
             }
         }
-        __asm volatile ("wfi");                     /* sleep until the next tick */
+        __asm volatile ("wfi");                     /* sleep until the next tick or CAN frame */
     }
 }

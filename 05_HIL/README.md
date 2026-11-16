@@ -45,7 +45,7 @@ it never runs cleanly the test is reported **SKIPPED – INCONCLUSIVE**, never a
 
 | File | What it is |
 |---|---|
-| `target/main.c` | ECU firmware: bxCAN driver, 1 ms SysTick, 10 ms task, E2E, status every 100 ms |
+| `target/main.c` | ECU firmware: bxCAN driver (RX interrupt + queue), 1 ms SysTick, 10 ms task, E2E, sensor timeout, status every 100 ms |
 | `target/uds.c`, `uds.h` | UDS server (0x10, 0x22, 0x19, 0x14, 0x3E, NRCs) and ISO-TP (SF, FF → wait for FC → CF one per ms) |
 | `target/Makefile` | Builds `target/build/hil_fw.elf` (startup + linker script shared with 04_PIL) |
 | `renode/hil_board.resc` | The emulated STM32F4 board with the firmware |
@@ -53,7 +53,7 @@ it never runs cleanly the test is reported **SKIPPED – INCONCLUSIVE**, never a
 | `renode/hil_tcp.resc`, `tcp_can_bridge.py` | CAN1 ↔ TCP port 3457, for PCs without SocketCAN (CI, containers) |
 | `host/hil_bench.py` | The bench: real-time plant, BCM, fault injection, logger, health check |
 | `host/hil_live.py` | Live mode: you drive the ECU by hand (with `bcm_live.py`) |
-| `tests/test_hil.py` | TC_69–TC_80, automated real-time tests (incl. UDS on the target) |
+| `tests/test_hil.py` | TC_69–TC_80, TC_87: automated real-time tests (incl. UDS on the target, lost sensor frames) |
 | `dbc/hil_io.dbc` | HIL I/O messages 0x300, 0x301 |
 | `run_hil.sh` | One command: vcan0 up, build, run the tests |
 
@@ -64,7 +64,7 @@ Setup: same as `04_PIL` (arm-none-eabi-gcc, Renode) and `vcan0` from the CAN par
 
 ```bash
 pw
-bash 05_HIL/run_hil.sh                      # 12 tests, about 2 minutes (each test = fresh ECU power-on)
+bash 05_HIL/run_hil.sh                      # 13 tests, about 2 minutes (each test = fresh ECU power-on)
 HIL_BUS=tcp bash 05_HIL/run_hil.sh          # without vcan0
 ```
 
@@ -98,3 +98,9 @@ Remember the workshop order: repair (unfreeze / resume the BCM, `r`) → clear �
 2. **Measure on the bus, not inside the ECU.** Reaction times are taken from frame timestamps (switch frame →
    motor frame), like a HIL engineer does with CANoe or candump.
 3. **Every test starts with a power-on.** Fresh ECU state per test, no hidden dependencies between tests.
+4. **Never drive on stale inputs** (V&V F-09, CR_05): if the sensor frame 0x300 is missing for more than 100 ms, the
+   firmware treats it as "no voltage" and the motor stops; lost CAN frames (RX FIFO overrun) are counted and reported
+   in 0x301 (bytes 4–5). Tested by TC_87.
+5. **Polling a 3-deep FIFO loses frames** (found by that counter): the firmware now takes every frame in the CAN RX
+   interrupt into a 16-entry queue, the TCP bridge spaces frames 0.25 ms apart in virtual time (like a real bus), and the
+   bench tester reports "no answer" after 0.5 s instead of waiting forever.

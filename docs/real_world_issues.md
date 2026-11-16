@@ -77,6 +77,13 @@ _Started 14 Nov 2026 – add every new issue you meet at work._
 - **Prevented by:** one central communication matrix (DBC/ARXML) for the whole vehicle.
 - **This project (seen live, 16 Nov 2026):** an old `run_live.py` was still running, so two ECUs sent 0x210 and answered on 0x7E8. The trace alternated between two window positions (100 % ERROR and a moving window). Fix: `pkill -f run_live.py`, then check the bus is quiet with `candump vcan0,210:7FF` before starting. On a real bench this happens when two test PCs or two restbus simulations are connected to the same bus.
 
+### B6. Receive FIFO overrun (frames lost inside the ECU)
+- **What you see:** a request that "was sent" never gets an answer; a message seems to be missing although the trace shows it on the bus.
+- **Cause:** the CAN controller's receive FIFO is tiny (bxCAN: 3 frames). If the software empties it only every 1 ms (polling), a burst of frames overflows it – at 500 kbit/s up to ~4 frames arrive per ms.
+- **How it's found:** the overrun flag (FOVR) in the CAN controller; a lost-frame counter reported by the ECU; a tester that reports "no answer" instead of waiting forever.
+- **Prevented by:** a receive interrupt that moves every frame into a software queue at once; hardware acceptance filters so only relevant IDs are stored.
+- **This project:** the new overrun counter (CR_05) showed 1 lost frame at every power-on and one lost UDS request. Fixed with an RX interrupt + 16-entry queue in the HIL firmware, realistic frame spacing in the TCP bridge, and a 0.5 s response timeout in the bench tester.
+
 ---
 
 ## C. The bus itself
@@ -160,7 +167,7 @@ _Started 14 Nov 2026 – add every new issue you meet at work._
 - **What you see:** "0 findings" or "all passed" although something is wrong.
 - **Cause:** a tool option missing, a filter too strict, tests not actually running.
 - **How it's found:** feed the tool a known bad input (tool qualification / self-test).
-- **This project:** the MISRA check reported nothing until `--enable=style` (defect 8).
+- **This project:** the MISRA check reported nothing until `--enable=style` (defect 8). Later, the independent V&V review found an always-true condition (MISRA Rule 14.3, required) that the cppcheck addon never reported: it covers only a subset of the rules. A clean tool report is evidence for the rules the tool checks, nothing more.
 
 ### E3. Hard-coded values and stale files in the setup
 - **What you see:** many tests fail at once after a "small" change, or a fix that doesn't seem to work.
