@@ -1,0 +1,37 @@
+VERSION ""
+
+
+NS_ :
+	CM_
+	BA_DEF_
+	BA_
+	VAL_
+	BA_DEF_DEF_
+
+BS_:
+
+BU_: HIL DCU
+
+BO_ 768 HIL_Sensors: 6 HIL
+ SG_ HIL_WindowPos : 0|16@1+ (0.01,0) [0|100] "%" DCU
+ SG_ HIL_MotorCurrent : 16|16@1+ (0.01,0) [0|40] "A" DCU
+ SG_ HIL_Vbat : 32|16@1+ (0.01,0) [0|20] "V" DCU
+
+BO_ 769 HIL_Actuators: 4 DCU
+ SG_ HIL_MotorCmd : 0|8@1- (1,0) [-1|1] "" HIL
+ SG_ HIL_CtrlState : 8|8@1+ (1,0) [0|5] "" HIL
+ SG_ HIL_StepTicks : 16|16@1+ (1,0) [0|65535] "ticks" HIL
+
+
+CM_ BU_ HIL "HIL bench (PC): plant model, sensor and actuator emulation";
+CM_ BO_ 768 "Replaces the analog inputs of a real HIL bench: position sensor, current measurement, battery voltage. Every 10 ms";
+CM_ BO_ 769 "Replaces the H-bridge output measurement of a real HIL bench. Every 10 ms";
+CM_ SG_ 769 HIL_StepTicks "Execution time of WindowCtrl_Step on the ECU (SysTick ticks, 72 MHz in Renode)";
+
+BA_DEF_ BO_ "GenMsgCycleTime" INT 0 10000;
+BA_DEF_DEF_ "GenMsgCycleTime" 0;
+BA_ "GenMsgCycleTime" BO_ 768 10;
+BA_ "GenMsgCycleTime" BO_ 769 10;
+
+VAL_ 769 HIL_MotorCmd -1 "Down" 0 "Stop" 1 "Up" ;
+VAL_ 769 HIL_CtrlState 0 "IDLE" 1 "MOVING_UP" 2 "MOVING_DOWN" 3 "PINCH_REVERSE" 4 "WAIT_RELEASE" 5 "ERROR" ;

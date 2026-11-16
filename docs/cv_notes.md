@@ -12,9 +12,9 @@ _Last updated: 16 Nov 2026 (MIL, SIL, CAN/UDS, CR_01, CR_04 E2E, PIL on Renode)_
 ## 10-second summary (top of CV / profile)
 
 Automotive engineer focused on **ECU software testing**. Built a complete verification project for a power
-window ECU along the **V-model: MIL → SIL → PIL**, with **CAN, UDS diagnostics, E2E protection**, back-to-back
-testing, **96 % code coverage, MISRA C:2012** and **CI (GitHub Actions)**: 103 automated tests, 11 defects
-found and fixed, 2 change requests handled end to end.
+window ECU along the **V-model: MIL → SIL → PIL → HIL**, with **CAN, UDS diagnostics, E2E protection**, back-to-back
+testing, **96 % code coverage, MISRA C:2012** and **CI (GitHub Actions)**: 115 automated tests (incl. 12 real-time
+HIL tests on embedded firmware), 11 defects found and fixed, 2 change requests handled end to end.
 
 ## Bullet bank: problem → action → result (pick the best 5–7 for the CV)
 
@@ -43,9 +43,13 @@ found and fixed, 2 change requests handled end to end.
 - Cross-compiled the unchanged controller for an STM32F407 (Cortex-M4F, bare metal, own startup code and linker script, 2.4 KB flash) and ran all 103 SIL/CAN tests on the target in the Renode emulator: MIL vs. PIL 100 % identical; worst-case step time < 1 µs of the 10 ms budget.
 - Cut PIL runtime 12× (110 → 8 ms per step) by replacing UART busy-polling with a receive interrupt and WFI sleep; fixed the race condition before WFI.
 
+**HIL (real-time, CAN)**
+- Built a mini-HIL bench: the ECU firmware (own bxCAN driver, 1 ms scheduler, UDS + ISO-TP in C, 3.9 KB) runs as a real-time node on SocketCAN; the PC runs plant, BCM and diagnostic tester in a 10 ms loop. 12 automated tests measured on the bus: reaction ≤ 50 ms, timeout detection 500–520 ms, status cycle 100 ± 10 ms, pinch, frozen sender, UDS read/clear incl. multi-frame – 12 / 12 pass.
+- Found that the emulator stalled up to 183 ms on a loaded PC, which made timing tests fail randomly; added a test-system health check that repeats or reports a run as inconclusive instead of blaming the ECU.
+
 ## ATS keywords (use the ones that match the job ad)
 
-**English:** ECU testing, PIL testing, cross-compilation, bare-metal firmware, linker script, interrupts, software testing, test automation, V-model, MIL, SIL, PIL, HIL (in progress),
+**English:** ECU testing, PIL testing, cross-compilation, bare-metal firmware, linker script, interrupts, software testing, test automation, V-model, MIL, SIL, PIL, HIL, real-time testing, CAN driver, embedded UDS,
 requirements-based testing, test specification, traceability, back-to-back testing, regression testing,
 fault injection, boundary value analysis, code coverage, static analysis, MISRA C, CI/CD, GitHub Actions,
 MATLAB, Simulink, Stateflow, C, Python, pytest, embedded C, STM32, ARM Cortex-M, Renode, CAN, DBC,
@@ -84,8 +88,6 @@ Say instead: "open-source equivalents: python-can, SocketCAN, can-utils, Renode"
 
 - Handled a requirement change request (CR_01) through the full V-model: impact analysis (2 states, ~10 files, affected tests), REQ update incl. start-up rule, Stateflow and C changes, 6 new tests written first; 87 automated tests green, coverage 96 %.
 
-_Planned bullets (add when done):_
-- HIL: real-time plant ↔ MCU over CAN, automated fault-injection tests.
 
 ## Skills line (current version)
 
@@ -94,10 +96,10 @@ _Planned bullets (add when done):_
 **Networks & diagnostics:** CAN, DBC, E2E protection (AliveCounter), SocketCAN, can-utils (candump/cansend/cangen), python-can, cantools, ISO-TP, UDS (0x10, 0x22, 0x19, 0x14, 0x3E), DTCs
 **Domain:** body electronics (power window, anti-pinch), basic functional safety awareness
 
-**Testing levels:** MIL, SIL, back-to-back (model vs. code)
+**Testing levels:** MIL, SIL, PIL, HIL (emulated target), back-to-back (model vs. code / target)
 **Quality:** code coverage (gcov), static analysis (cppcheck, MISRA C:2012), CI/CD (GitHub Actions)
 
-_To add as the project goes on:_ STM32, PIL, HIL
+_Embedded:_ STM32 (Cortex-M4F), bare-metal C, bxCAN, Renode, arm-none-eabi-gcc
 
 ## Certificates
 - MATLAB Onramp (MathWorks)

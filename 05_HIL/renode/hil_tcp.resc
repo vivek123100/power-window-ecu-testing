@@ -1,0 +1,9 @@
+# HIL without SocketCAN: CAN1 of the emulated STM32 <-> TCP port 3457 (tcp_can_bridge.py).
+# For PCs/CI runners without vcan. The host side is TcpCanBus in 05_HIL/host/hil_bench.py.
+$board?=@05_HIL/renode/hil_board.resc
+$bridge?=@05_HIL/renode/tcp_can_bridge.py
+include $board
+include $bridge
+python "start_tcp_can_bridge(self.Machine, 'sysbus.can1', 3457)"
+
+start

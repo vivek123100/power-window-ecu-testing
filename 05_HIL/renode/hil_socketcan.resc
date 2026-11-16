@@ -1,0 +1,14 @@
+# HIL on SocketCAN: CAN1 of the emulated STM32 <-> Linux interface $canif (default vcan0).
+# candump, cansend, bcm_live.py and the HIL simulator see the ECU like a real control unit.
+# Manual start (repo root, vcan0 up):
+#   renode --disable-gui -e '$elf=@05_HIL/target/build/hil_fw.elf; include @05_HIL/renode/hil_socketcan.resc'
+$canif?="vcan0"
+$board?=@05_HIL/renode/hil_board.resc
+include $board
+
+emulation CreateCANHub "canHub"
+connector Connect sysbus.can1 canHub
+machine CreateSocketCANBridge "socketcan" $canif
+connector Connect socketcan canHub
+
+start

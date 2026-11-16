@@ -73,6 +73,18 @@ Techniques used: requirements-based testing, boundary value analysis, equivalenc
 | TC_66 | REQ_16, REQ_18 | Freeze 2.0–2.6 s, Up released at 2.8 s | Tester: 14 FF FF FF at 3 s, 19 02 FF at 3.5 s | 54, then no DTC; status bit 5 = 0 |
 | TC_67 | REQ_17, REQ_09 | Freeze 2.0–2.6 s, Up held until 2.8 s | Fresh frames back at 2.6 s | ERROR at 2.7 s (Up still held), IDLE at 3.0 s; U0422-00 stays stored |
 | TC_68 | REQ_15 | ISO-TP receiver | Same Consecutive Frame twice; unsolicited frames on 0x7E8 | Duplicate CF dropped (no crash), next message works; tester ignores frames it did not ask for |
+| TC_69 | REQ_01 | HIL: ECU at 50 %, 12 V | Up pressed at 1.0 s | Motor Up frame (0x301) ≤ 50 ms after the switch frame, measured on the bus |
+| TC_70 | REQ_03 | HIL: moving up | Up released at 1.5 s | Motor Stop ≤ 50 ms after the release frame; IDLE |
+| TC_71 | REQ_05, REQ_06, REQ_13, REQ_14 | HIL: hand at 70 %, Up held 1.0–4.0 s | – | PinchFlag in 0x210, reversal to ≤ 50.5 %, WAIT_RELEASE, no movement while held; IDLE and PinchFlag 0 after release |
+| TC_72 | REQ_09 | HIL: closing from 10 % | BCM silent from 2.0 s | ERROR 500–520 ms after the last switch frame; DTC_SwitchTimeout in 0x210 |
+| TC_73 | REQ_17, REQ_18 | HIL: closing from 10 % | BCM frozen from 2.0 s (Up repeated, same counter) | DTC_SwitchInvalid before 2.2 s; motor stops before 2.6 s |
+| TC_74 | REQ_08 | HIL: closing | Battery 8.5 V at 1.5 s (0x300) | Motor Stop ≤ 50 ms |
+| TC_75 | REQ_12 | HIL: ECU running | Record 0x210 for 5 s | Every gap 100 ± 10 ms, ≥ 48 frames |
+| TC_76 | REQ_11 | HIL: closing | Down also pressed at 1.5 s | Motor Stop ≤ 50 ms |
+| TC_77 | Timing | HIL: moving + pinch | – | WindowCtrl_Step < 10 % of the 10 ms task (SysTick ticks in 0x301) |
+| TC_78 | REQ_15, REQ_16 | HIL: BCM silent 1.0–1.7 s | 19 02 FF at 2.5 s, 14 FF FF FF at 3.0 s, 19 02 FF at 3.5 s | U0140-00, then 54, then no DTC (UDS in the firmware) |
+| TC_79 | REQ_15, REQ_18 | HIL: frozen 1.0–1.7 s while closing | 19 02 FF at 2.5 s | U0140-00 + U0422-00 = 11 bytes as First Frame + Flow Control + Consecutive Frame |
+| TC_80 | REQ_15 | HIL: ECU idle | 22 F1 95, 22 F1 FF, 31 01 02 03, 3E 00, 10 03 | "PW-1.0.0" (multi-frame), 7F 22 31, 7F 31 11, 7E 00, 50 03 00 32 01 F4; each first response ≤ 50 ms (P2) |
 
 
 ## Coverage justifications
@@ -115,6 +127,7 @@ Test levels per test case
 | CAN E2E (virtual bus) | 03_CAN/tests/test_can_e2e.py | TC_61–TC_67 |
 | UDS (virtual bus) | 03_CAN/tests/test_uds.py | TC_39–TC_48, TC_68 |
 | Live (manual) | 03_CAN/LIVE_DEMO.md | demos A–E on SocketCAN vcan0 |
+| HIL (firmware as CAN node on vcan0) | 05_HIL/tests/test_hil.py (`bash 05_HIL/run_hil.sh`) | TC_69–TC_80, real time, measured on the bus |
 | PIL (STM32F407 in Renode) | `TARGET=pil` + 02_SIL/tests, 03_CAN/tests (`bash 04_PIL/run_pil.sh`) | all SIL, CAN, E2E and UDS test cases (103 tests); back-to-back MIL vs. PIL |
 
 Timing note (REQ_09): the timeout is detected 510 ms after the last message (first 10 ms check with age > 500 ms). Recommended requirement update: "detected within 500–520 ms".
@@ -123,4 +136,9 @@ Timing note (REQ_09): the timeout is detected 510 ms after the last message (fir
 - Same test cases and limits as SIL; only the controller moves to the target (cross-compiled with `arm-none-eabi-gcc -O2 -Werror`, hardware FPU).
 - Execution time of `WindowCtrl_Step` measured with SysTick on every call: worst 56–57 ticks (< 1 µs at Renode's 72 MHz SysTick) of the 10 ms budget. Renode is instruction-based, not cycle-accurate: the real value must be measured on a board (DWT cycle counter).
 - Result: 103 passed, 1 skipped (same as SIL); MIL vs. PIL 23/23 identical (`reports/b2b/b2b_pil_report.md`).
+
+## HIL notes
+- Every test powers on a fresh ECU; the bench (plant, BCM, tester) runs a 10 ms real-time loop; results come from CAN frame timestamps.
+- Test-system health: the ECU's 10 ms frames and the bench loop must be on time (≤ 15 ms late) during each measurement. Otherwise the run is repeated (up to 3 times) and finally reported SKIPPED "INCONCLUSIVE", never as an ECU result.
+- Result on my laptop (vcan0, 16 Nov 2026): 12 / 12 passed, no repetitions needed.
 

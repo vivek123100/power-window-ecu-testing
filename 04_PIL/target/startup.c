@@ -16,7 +16,11 @@ extern int main(void);
 
 void Reset_Handler(void);
 void Default_Handler(void);
-void USART2_IRQHandler(void);                            /* in main.c */
+
+/* Interrupt handlers used by the firmwares. "weak" = if a firmware does not
+ * define one, Default_Handler is used. Shared by PIL (04_PIL) and HIL (05_HIL). */
+void SysTick_Handler(void)   __attribute__((weak, alias("Default_Handler")));
+void USART2_IRQHandler(void) __attribute__((weak, alias("Default_Handler")));
 
 #define IRQ_USART2   (38)                                /* STM32F4 interrupt number */
 #define N_VECTORS    (16 + 82)                           /* 16 core + 82 STM32F407 IRQs */
@@ -43,7 +47,7 @@ void Default_Handler(void)
 }
 
 /* Vector table: placed at the start of flash by the linker script.
- * Only one peripheral interrupt is used: USART2 receive. */
+ * Used: SysTick (HIL 1 ms tick) and USART2 receive (PIL). */
 __attribute__((section(".isr_vector"), used))
 const void *const g_vectors[N_VECTORS] =
 {
@@ -59,7 +63,7 @@ const void *const g_vectors[N_VECTORS] =
     Default_Handler,       /* 12 DebugMonitor          */
     0,                     /* 13 reserved              */
     Default_Handler,       /* 14 PendSV                */
-    Default_Handler,       /* 15 SysTick               */
+    SysTick_Handler,       /* 15 SysTick               */
     [16 ... (16 + IRQ_USART2 - 1)] = Default_Handler,   /* IRQs 0..37: unused       */
     [16 + IRQ_USART2] = USART2_IRQHandler,              /* IRQ 38: USART2           */
     [(16 + IRQ_USART2 + 1) ... (N_VECTORS - 1)] = Default_Handler,

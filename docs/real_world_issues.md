@@ -198,6 +198,13 @@ _Started 14 Nov 2026 – add every new issue you meet at work._
 - **Prevented by:** a `.gitattributes` with `* text=auto eol=lf` in every mixed Windows/Linux repo; explicit `lineterminator="\n"` in generated files.
 - **This project:** after merging PR #2 the shell scripts and the Makefile were checked out with CRLF, and every test run "modified" 23 CSV files. Fixed with `.gitattributes` + `git add --renormalize .` and LF in the CSV writer.
 
+### E8. The test bench is not real-time
+- **What you see:** timing tests fail randomly (a cycle of 200 ms instead of 100 ms, a reaction of 180 ms), and pass when repeated.
+- **Cause:** the test system itself was late: a PC or emulator stalled (other load, garbage collection, scheduling), not the ECU.
+- **How it's found:** monitor the bench during every measurement (its own loop timing, the ECU's cyclic frames).
+- **Prevented by:** real-time hardware for hard timing (dSPACE, NI); and in every case: a health check that marks results **inconclusive** instead of pass/fail.
+- **This project:** on a busy 2-core PC Renode stalled up to 183 ms; TC_75 was reported INCONCLUSIVE there, and passed cleanly on my laptop.
+
 ---
 
 ## Quick checklist when something "doesn't work"
