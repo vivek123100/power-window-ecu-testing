@@ -1,0 +1,17 @@
+# Renode script: an emulated STM32F4 Discovery board running the PIL firmware.
+# USART2 of the board is connected to TCP port $port, so the PC test harness
+# can talk to the firmware like over a USB-serial cable.
+#
+# Started automatically by 04_PIL/host/pil_target.py. Manual start (from the repo root):
+#   renode --disable-gui -e '$elf=@04_PIL/target/build/pil_fw.elf; include @04_PIL/renode/pil.resc'
+
+$port?=3456
+
+mach create "power_window_ecu"
+machine LoadPlatformDescription @platforms/boards/stm32f4_discovery-kit.repl
+sysbus LoadELF $elf
+
+emulation CreateServerSocketTerminal $port "pil_uart" false
+connector Connect sysbus.usart2 pil_uart
+
+start

@@ -12,18 +12,23 @@ Two results per signal:
 Pos/Current are floats, compared with a small value tolerance.
 
 Writes reports/b2b/b2b_report.md and reports/b2b/sil/TC_xx.csv.
+With TARGET=pil the code runs on the STM32 (PIL) instead: MIL vs. PIL, written to
+reports/b2b/b2b_pil_report.md and reports/b2b/pil/TC_xx.csv.
 
 Run:  pytest 02_SIL/tests/test_back_to_back.py -v
+      TARGET=pil pytest 02_SIL/tests/test_back_to_back.py -v
 """
 import csv
+import os
 import pathlib
 
 import pytest
 from sil_env import ROOT, simulate
 
 MIL_DIR = ROOT / "reports" / "b2b" / "mil"
-SIL_DIR = ROOT / "reports" / "b2b" / "sil"
-REPORT = ROOT / "reports" / "b2b" / "b2b_report.md"
+LEVEL = "PIL" if os.environ.get("TARGET") == "pil" else "SIL"
+SIL_DIR = ROOT / "reports" / "b2b" / LEVEL.lower()
+REPORT = ROOT / "reports" / "b2b" / ("b2b_pil_report.md" if LEVEL == "PIL" else "b2b_report.md")
 
 SIGNALS = ["motor_cmd", "pinch_flag", "dtc_switch_timeout", "dtc_motor_overrun", "pos", "current"]
 VALUE_TOL = {"pos": 1e-3, "current": 1e-3}      # floats; others must be equal
@@ -120,7 +125,8 @@ def b2b_report():
     yield
     if not _results:
         return
-    lines = ["# Back-to-Back Report: MIL (Simulink) vs. SIL (C code)", "",
+    where = "C code on the STM32 target" if LEVEL == "PIL" else "C code"
+    lines = [f"# Back-to-Back Report: MIL (Simulink) vs. {LEVEL} ({where})", "",
              f"Compared every 10 ms. Tolerance: value {VALUE_TOL} for floats, "
              f"time +-{TIME_TOL_STEPS} step.", "",
              "| TC | Result | Exact match | Notes |", "|---|---|---|---|"]
@@ -133,7 +139,7 @@ def b2b_report():
         for sig, s in stats.items():
             if s["first_tol_diff"]:
                 t, m, v = s["first_tol_diff"]
-                notes.append(f"**{sig} differs at {t:.2f} s (MIL {m:g}, SIL {v:g})**")
+                notes.append(f"**{sig} differs at {t:.2f} s (MIL {m:g}, {LEVEL} {v:g})**")
             elif s["first_exact_diff"]:
                 t, m, v = s["first_exact_diff"]
                 notes.append(f"{sig}: 1-step offset from {t:.2f} s")
@@ -166,5 +172,5 @@ def test_back_to_back(ctrl, mil_file):
         if s["tol"] != s["n"]:
             t, m, v = s["first_tol_diff"]
             problems.append(f"{sig}: {s['n'] - s['tol']} samples differ, first at {t:.2f} s "
-                            f"(MIL {m:g}, SIL {v:g})")
-    assert not problems, f"{tc} MIL vs SIL mismatch:\n  " + "\n  ".join(problems)
+                            f"(MIL {m:g}, {LEVEL} {v:g})")
+    assert not problems, f"{tc} MIL vs {LEVEL} mismatch:\n  " + "\n  ".join(problems)
