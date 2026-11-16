@@ -1,0 +1,19 @@
+# Line endings: always LF in the repo AND in the working copy, on every PC.
+# Without this, Git on Windows (core.autocrlf) writes CRLF, and bash/make in
+# WSL then fail on run_all.sh, run_pil.sh and the Makefile ($'\r': command not found).
+* text=auto eol=lf
+
+# Windows-only scripts keep CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary files: never touch
+*.slx  binary
+*.mat  binary
+*.mlx  binary
+*.png  binary
+*.jpg  binary
+*.pdf  binary
+*.zip  binary
+*.elf  binary
