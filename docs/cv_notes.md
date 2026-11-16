@@ -45,7 +45,7 @@ found and fixed, 2 change requests handled end to end.
 
 ## ATS keywords (use the ones that match the job ad)
 
-**English:** ECU testing, software testing, test automation, V-model, MIL, SIL, PIL, HIL (in progress),
+**English:** ECU testing, PIL testing, cross-compilation, bare-metal firmware, linker script, interrupts, software testing, test automation, V-model, MIL, SIL, PIL, HIL (in progress),
 requirements-based testing, test specification, traceability, back-to-back testing, regression testing,
 fault injection, boundary value analysis, code coverage, static analysis, MISRA C, CI/CD, GitHub Actions,
 MATLAB, Simulink, Stateflow, C, Python, pytest, embedded C, STM32, ARM Cortex-M, Renode, CAN, DBC,

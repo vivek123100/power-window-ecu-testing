@@ -4,7 +4,7 @@
 > *"I'm continuing my automotive testing learning project. Here is my project context. Continue from 'Next steps'."*
 > Update this file at every milestone (or ask Claude to update it).
 
-_Last updated: 16 Nov 2026 (CR_04 done on branch, PR next)_
+_Last updated: 16 Nov 2026 (CR_04 merged; PIL on Renode done on branch `pil-renode`)_
 
 ## 1. Who I am and what I want
 - Automotive engineer, beginner–intermediate in testing theory.
@@ -55,7 +55,7 @@ Bugs found so far: missing fault handling in PINCH_REVERSE (→ TC_20), repeated
 - [x] **SIL complete:** C controller (`02_SIL/src/`), pytest harness 36 tests (`02_SIL/tests/`, sensor fault `pos_stuck_from`), back-to-back vs. MIL 100 % identical, coverage 95 % lines (only defensive `default:` uncovered), cppcheck + MISRA (addon needs `--enable=style`; DEV_01 Rule 8.7 in `02_SIL/misra_suppressions.txt`), GitHub Actions green with quality gates.
 - [x] **CAN + UDS complete:** DBC `03_CAN/dbc/power_window.dbc` (0x200 BCM_WindowSwitch 20 ms, 0x210 DCU_WindowStatus 100 ms); `03_CAN/sim/can_network.py` (virtual bus, BCM/DCU/tester/logger, simulated time, `bcm_silent`, `diag_requests`); `03_CAN/sim/uds.py` (ISO-TP by hand, UDS 0x10/0x22 F195+0100/0x19 02/0x14/0x3E on 0x7E0/0x7E8, DTCs U0140-00, B1310-00); tests `03_CAN/tests/test_can.py` (8) and `test_uds.py` (13); C API `WindowCtrl_ClearDtcs`. REQ_15/REQ_16, TC_37–TC_48 added. Total 77 passed locally (`bash run_all.sh`). Open question: REQ_09 timeout only detected while moving.
 - [x] **CR_04 E2E (16 Nov 2026), branch `cr04-e2e-alive-counter`:** `02_SIL/src/e2e_counter.c/.h` (my own E2E_CheckCounter), separate DTC U0422-00 (`C4 22 00`, 0x210 byte 1 bit 5), DCU discards stale frames before they update switches or the message age; MISRA check covers e2e_counter.c. Tests: TC_54–TC_60b (unit), TC_61–TC_67 (CAN, `bcm_frozen=`), TC_68 (ISO-TP robustness). `bash run_all.sh`: 103 passed, 1 skipped. Live tools: `bcm_live.py` (u/d/r, `u 0.8` timed hold, f freeze, s cut wire), `run_live.py` takes `p 70` (obstacle), `p`, `w`; guide `03_CAN/LIVE_DEMO.md`. Docs: REQ_17/18, OP_03 fixed, OP_07 (no CRC) open, `docs/real_world_issues.md` B5/D5/D6.
-- [ ] PIL (STM32 Nucleo)
+- [x] **PIL (16 Nov 2026), branch `pil-renode`:** firmware `04_PIL/target` (startup.c, stm32f407.ld, main.c UART server with RX interrupt + WFI, SysTick timing, Makefile), Renode 1.17 script `04_PIL/renode/pil.resc` (UART2 → TCP 3456), host `04_PIL/host/pil_target.py` (same API as the SIL library, finds Renode in `~/renode_*-portable`). `TARGET=pil` makes `02_SIL/tests` + `03_CAN/tests` run on the target; `bash 04_PIL/run_pil.sh`. Result on my laptop: 103 passed, 1 skipped; MIL vs. PIL 23/23 identical; worst step 56 SysTick ticks. Setup in WSL: `sudo apt install gcc-arm-none-eabi libnewlib-arm-none-eabi`, Renode portable in `~/renode_1.17.0-portable`. Real board later (Nucleo, pyserial link).
 - [ ] Mini-HIL with fault injection
 - [ ] README polish + demo video
 - Parked for later: Jira (free) + Xray trial; Polarion/codeBeamer/Jama trial; Doorstop or sphinx-needs; seat heater Stateflow exercise.
@@ -64,6 +64,7 @@ Bugs found so far: missing fault handling in PINCH_REVERSE (→ TC_20), repeated
 - **CR_01 DONE (14 Nov 2026):** REQ_09 timeout now detected in every state (new transitions IDLE→ERROR and WAIT_RELEASE→ERROR, priority 1, in Stateflow and `window_ctrl.c`); option A start-up rule (message age counts from power-on, `can_network.py` `last_rx_t = 0.0`); tests TC_32 updated, TC_49–TC_53 added; MIL 23/23, `bash run_all.sh` 87 passed / 1 skipped, coverage 96 %. Since CR_01, `run_live.py` stores U0140-00 if `cangen` doesn't start within 0.5 s.
 - My computer's repo folder is connected to the chat: Claude can write files directly into it.
 1. Open points left: OP_06 start-up delay (A + C), OP_07 CRC for E2E. Out of scope: OP_04 engine off / locking (CR_02), OP_05 crash behaviour (CR_03).
-2. **Now:** open the pull request `cr04-e2e-alive-counter` → `main`, wait for green CI, merge, then `git checkout main` + `git pull`.
+2. **Now:** pull request `pil-renode` → `main` (CI runs SIL only; PIL is run locally), merge, `git checkout main` + `git pull`.
+   **Next: mini-HIL** (controller on the emulated STM32 with its CAN peripheral bridged to vcan0, real-time plant + live BCM, automated real-time tests). Target: project done by end of November 2026, then README polish, CV, demo video (last).
 3. Next options: demo video (script exists), PIL on a board (Nucleo-G431RB/G474RE + CAN transceiver, or Renode for free), OP_06 start-up delay, OP_07 CRC.
 4. Housekeeping: move the repo out of OneDrive to `C:\Projects`; add TC_23–TC_36 to the MIL harness.

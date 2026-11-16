@@ -177,6 +177,22 @@ _Started 14 Nov 2026 – add every new issue you meet at work._
 
 ---
 
+### E5. Tool installed, but the test run doesn't find it
+- **What you see:** the tool works when typed by hand, but the test script says "not found", or uses a different version.
+- **Cause:** the test runner has a different environment (PATH, Python venv, user, CI machine) than your interactive shell.
+- **How it's found:** print the environment inside the test (`which tool`, `tool --version`) instead of trusting your terminal.
+- **Prevented by:** tool paths in configuration (not "whatever is on the PATH"), and the tool version in every test report.
+- **This project:** Renode worked in the shell, but re-activating the Python venv (`pw`) restored the old PATH without it. `pil_target.py` now also looks in `~/renode_*-portable/`.
+
+### E6. The emulator (or simulator) is not the chip
+- **What you see:** results that look fine but can't be trusted for timing or some peripherals.
+- **Cause:** emulators model what's needed for software to run, not every register, and usually not real clock timing.
+- **How it's found:** check suspicious values (a counter that always reads 0); compare with a real board.
+- **Prevented by:** knowing what each test level can prove: PIL in an emulator proves the compiler and code, real timing needs hardware.
+- **This project:** Renode doesn't model the DWT cycle counter (always 0), so execution time is measured with SysTick, and only as an estimate.
+
+---
+
 ## Quick checklist when something "doesn't work"
 
 1. **Is the setup right?** Versions (software, DBC, test files), wiring, termination, power supply.

@@ -58,6 +58,14 @@ _Last updated: 14 Nov 2026 (MIL, SIL, CAN/UDS complete; CR_01 implemented, 87 te
 | STM32 / STM32CubeIDE | 📅 | – | – |
 | Mini-HIL (real-time plant ↔ MCU over CAN) | 📅 | – | – |
 
+## PIL tools (added 16 Nov 2026)
+| Tool | Used for |
+|---|---|
+| arm-none-eabi-gcc 13 | Cross-compiler for ARM Cortex-M (`-mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard`) |
+| arm-none-eabi-size, map file | Flash/RAM usage of the firmware (2.4 KB flash) |
+| Make | Firmware build (`04_PIL/target/Makefile`) |
+| Renode 1.17 | Emulated STM32F4 Discovery board, UART → TCP socket, headless in tests |
+
 ## Methods & standards
 | Method | Status | Where I applied it |
 |---|---|---|
@@ -69,6 +77,10 @@ _Last updated: 14 Nov 2026 (MIL, SIL, CAN/UDS complete; CR_01 implemented, 87 te
 | Scenario review / requirement gap analysis | ✅ | Found gaps (idle timeout, E2E, detection window) and out-of-scope items (engine off/locking, crash); documented with decisions |
 | Test-driven development | ✅ | UDS clear-DTC test written first (red), then the C function `WindowCtrl_ClearDtcs` (green) |
 | Manual fault injection on a live bus | ✅ | Stopped the BCM sender with cangen/Ctrl+C -> timeout, DTC U0140-00, read and cleared via UDS by hand |
+| Processor-in-the-Loop (PIL) | ✅ | Unchanged controller cross-compiled for STM32F407; all 103 SIL/CAN tests re-run on the target in Renode; MIL vs. PIL back-to-back 23/23 identical |
+| Bare-metal embedded C | ✅ | Own startup code (vector table, .data/.bss init, FPU on), linker script, register-level UART, interrupt + WFI, SysTick timing, no HAL |
+| Execution time measurement | ✅ | SysTick around `WindowCtrl_Step` on every call; worst < 1 µs of 10 ms (emulator estimate); learned DWT isn't modelled in Renode |
+| Test harness abstraction | ✅ | `pil_target.py` has the same API as the SIL ctypes library, so one test suite runs on PC and target (`TARGET=pil`) |
 | E2E protection (AliveCounter) | ✅ | CR_04: C module `e2e_counter.c` discards stale frames, U0422-00 after 3 in a row; check placed in the communication layer, so the window logic stayed unchanged |
 | Frozen-sender fault injection | ✅ | Live BCM (`bcm_live.py`) frozen on purpose: frames on time but stale; watched the counter stop in candump |
 | Robustness testing (unexpected input) | ✅ | Two ECUs on one bus crashed the ISO-TP receiver; fixed to drop bad frames, regression test TC_68 |

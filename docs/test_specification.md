@@ -115,5 +115,12 @@ Test levels per test case
 | CAN E2E (virtual bus) | 03_CAN/tests/test_can_e2e.py | TC_61–TC_67 |
 | UDS (virtual bus) | 03_CAN/tests/test_uds.py | TC_39–TC_48, TC_68 |
 | Live (manual) | 03_CAN/LIVE_DEMO.md | demos A–E on SocketCAN vcan0 |
+| PIL (STM32F407 in Renode) | `TARGET=pil` + 02_SIL/tests, 03_CAN/tests (`bash 04_PIL/run_pil.sh`) | all SIL, CAN, E2E and UDS test cases (103 tests); back-to-back MIL vs. PIL |
 
 Timing note (REQ_09): the timeout is detected 510 ms after the last message (first 10 ms check with age > 500 ms). Recommended requirement update: "detected within 500–520 ms".
+
+## PIL notes
+- Same test cases and limits as SIL; only the controller moves to the target (cross-compiled with `arm-none-eabi-gcc -O2 -Werror`, hardware FPU).
+- Execution time of `WindowCtrl_Step` measured with SysTick on every call: worst 56–57 ticks (< 1 µs at Renode's 72 MHz SysTick) of the 10 ms budget. Renode is instruction-based, not cycle-accurate: the real value must be measured on a board (DWT cycle counter).
+- Result: 103 passed, 1 skipped (same as SIL); MIL vs. PIL 23/23 identical (`reports/b2b/b2b_pil_report.md`).
+
