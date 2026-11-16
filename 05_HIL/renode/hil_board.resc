@@ -1,0 +1,5 @@
+# The ECU: HIL firmware on an emulated STM32F4 Discovery board (included by
+# hil_socketcan.resc or hil_tcp.resc - those connect CAN1 to a bus).
+mach create "power_window_ecu"
+machine LoadPlatformDescription @platforms/boards/stm32f4_discovery-kit.repl
+sysbus LoadELF $elf

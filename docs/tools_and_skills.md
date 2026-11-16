@@ -77,6 +77,10 @@ _Last updated: 14 Nov 2026 (MIL, SIL, CAN/UDS complete; CR_01 implemented, 87 te
 | Scenario review / requirement gap analysis | ✅ | Found gaps (idle timeout, E2E, detection window) and out-of-scope items (engine off/locking, crash); documented with decisions |
 | Test-driven development | ✅ | UDS clear-DTC test written first (red), then the C function `WindowCtrl_ClearDtcs` (green) |
 | Manual fault injection on a live bus | ✅ | Stopped the BCM sender with cangen/Ctrl+C -> timeout, DTC U0140-00, read and cleared via UDS by hand |
+| Hardware-in-the-Loop (mini-HIL) | ✅ | ECU firmware runs on its own as a CAN node on vcan0 (Renode SocketCAN bridge); real-time plant, BCM and UDS tester on the PC; 12 tests measured on the bus |
+| CAN driver (bxCAN, register level) | ✅ | Init, bit timing 500 kbit/s, acceptance filter, RX FIFO, 3 TX mailboxes |
+| UDS + ISO-TP in embedded C | ✅ | Server with 0x10/0x22/0x19/0x14/0x3E and NRCs; FF → wait for Flow Control → CF one per ms |
+| Real-time test measurement | ✅ | Reaction times and cycle times from frame timestamps; test-system health check, inconclusive results |
 | Processor-in-the-Loop (PIL) | ✅ | Unchanged controller cross-compiled for STM32F407; all 103 SIL/CAN tests re-run on the target in Renode; MIL vs. PIL back-to-back 23/23 identical |
 | Bare-metal embedded C | ✅ | Own startup code (vector table, .data/.bss init, FPU on), linker script, register-level UART, interrupt + WFI, SysTick timing, no HAL |
 | Execution time measurement | ✅ | SysTick around `WindowCtrl_Step` on every call; worst < 1 µs of 10 ms (emulator estimate); learned DWT isn't modelled in Renode |

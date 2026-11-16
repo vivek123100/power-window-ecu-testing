@@ -3,16 +3,18 @@
 ![SIL tests](https://github.com/vivek123100/power-window-ecu-testing/actions/workflows/sil-tests.yml/badge.svg)
 
 A power window ECU with anti-pinch protection, verified along the V-model: from requirements through
-**Model-in-the-Loop**, **Software-in-the-Loop**, a **CAN/UDS network** and **Processor-in-the-Loop** on an STM32, with automated tests,
+**Model-in-the-Loop**, **Software-in-the-Loop**, a **CAN/UDS network**, **Processor-in-the-Loop** on an STM32 and a
+**mini Hardware-in-the-Loop** bench (ECU firmware as a real-time CAN node), with automated tests,
 back-to-back comparison, coverage, static analysis and CI. Personal learning and portfolio project.
 
 | | |
 |---|---|
 | Requirements | **18** (incl. two change requests, CR_01 and CR_04) |
-| Test cases | **68**, traced to requirements |
-| Automated tests | **103** on every push (SIL, back-to-back, CAN, UDS) + **23** MIL tests in MATLAB |
+| Test cases | **80**, traced to requirements |
+| Automated tests | **103** on every push (SIL, back-to-back, CAN, UDS) + **12** real-time HIL tests + **23** MIL tests in MATLAB |
 | Model vs. code | **100 % identical**, every signal every 10 ms: MIL vs. SIL **and** MIL vs. PIL (back-to-back) |
 | On the target | same 103 tests on an **STM32F407** (Cortex-M4F, Renode emulator); worst step time < 1 µs of 10 ms |
+| HIL | ECU firmware (bxCAN driver, UDS + ISO-TP in C) on vcan0, measured on the bus: reaction ≤ 50 ms, timeout 500–520 ms, cycle 100 ± 10 ms; **12 / 12 pass** |
 | Code coverage | **96 % lines** (only defensive code uncovered) |
 | Static analysis | cppcheck + MISRA C:2012 addon, 1 documented deviation |
 | Defects found | **11** (design, code, model, test tool, requirements, robustness) |
@@ -26,7 +28,7 @@ flowchart LR
   MIL -. "back-to-back<br/>23 scenarios" .- SIL
   SIL --> CAN["CAN + UDS + E2E<br/>virtual bus + SocketCAN<br/>32 tests"]
   CAN --> PIL["PIL<br/>STM32F407 on Renode<br/>103 tests · 23/23 identical"]
-  PIL --> HIL["Mini-HIL<br/>planned"]
+  PIL --> HIL["Mini-HIL<br/>firmware as CAN node on vcan0<br/>12 real-time tests"]
 ```
 
 The same test cases run at every level; only the "in-the-loop" part changes.
@@ -59,7 +61,7 @@ Controller states: `IDLE`, `MOVING_UP`, `MOVING_DOWN`, `PINCH_REVERSE`, `WAIT_RE
 | **UDS** | ISO-TP + UDS server in the ECU: read data, read/clear DTCs, negative responses, P2 | [`03_CAN/`](03_CAN) | 14 tests pass |
 | **Live** | ECU in real time on Linux SocketCAN `vcan0`: live BCM, pinch, frozen sender, UDS by hand | [`03_CAN/LIVE_DEMO.md`](03_CAN/LIVE_DEMO.md) | manual demos A–E |
 | **PIL** | Same tests, controller cross-compiled for an STM32F407 (bare metal, UART link), run in the Renode emulator; execution time measured | [`04_PIL/`](04_PIL) | 103 tests pass, MIL vs. PIL 23 / 23 identical |
-| HIL | Real-time plant ↔ MCU over CAN | `05_HIL/` | planned |
+| **HIL** | ECU firmware runs on its own (1 ms clock, bxCAN, UDS in C) on SocketCAN; real-time plant, BCM and tester on the PC; bench health check (inconclusive instead of false results) | [`05_HIL/`](05_HIL) | 12 / 12 pass |
 
 ## What testing found
 
@@ -92,6 +94,7 @@ bash run_all.sh                             # MISRA + 103 tests + coverage gate 
 python3 03_CAN/sim/run_demo.py              # lost CAN message -> ERROR after 510 ms
 python3 03_CAN/sim/run_uds_demo.py          # UDS session frame by frame
 bash 04_PIL/run_pil.sh                      # PIL: same tests on the emulated STM32 (needs arm-none-eabi-gcc + Renode)
+bash 05_HIL/run_hil.sh                      # HIL: ECU firmware as a CAN node on vcan0, real-time tests
 ```
 
 MIL: open `01_MIL/model/PowerWindow_MIL.slx` in MATLAB/Simulink and run `run_mil_tests` from `01_MIL/tests/`.
@@ -119,7 +122,7 @@ docs/       requirements, test specification, traceability, tools log
 02_SIL/     C controller (src/) + pytest harness, back-to-back (tests/)
 03_CAN/     DBC, virtual CAN network, UDS, live SocketCAN demo, CAN/UDS tests
 04_PIL/     PIL: STM32F407 firmware (startup, linker script, UART server), Renode script, host link
-05_HIL/     planned: mini-HIL
+05_HIL/     mini-HIL: ECU firmware (bxCAN, UDS), Renode SocketCAN bridge, real-time bench and tests
 reports/    MIL report, back-to-back reference data and report, static analysis
 run_all.sh  local pipeline, same steps as CI
 ```

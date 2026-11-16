@@ -112,6 +112,20 @@ Full guide with setup, all commands for the 4 terminals, demos and troubleshooti
 
 Demos: partial opening, anti-pinch, frozen sender (CR_04), lost message, repair → clear → verify.
 
+**Quick reference: frozen sender result and clearing**
+
+| What you see | Meaning |
+|---|---|
+| `state ERROR   DTC timeout 1   invalid 1` | the final state after a freeze |
+| `invalid 1` | the ECU saw the AliveCounter frozen and stored **U0422-00** |
+| `timeout 1` | then no fresh frame for 0.5 s → **U0140-00** and ERROR; the motor stopped although the frozen frames still said "Up" |
+| `10 0B 59 02 09 C1 40 00`, then `21 08 C4 22 00 08 AA AA` (in `candump -ta vcan0,7E8:7FF`) | read DTCs answer: U0140-00 and U0422-00 (First Frame + Consecutive Frame) |
+
+Repair → clear → verify:
+1. Repair first: in Terminal 3 unfreeze or resume the BCM, then `r`.
+2. Clear: `cansend vcan0 7E0#0414FFFFFFAAAAAA` → answer `01 54`.
+3. Check: `cansend vcan0 7E0#031902FFAAAAAAAA` → answer `03 59 02 09` = empty.
+
 > Since CR_04, `cangen` with fixed data repeats the same AliveCounter, so the ECU treats it as a
 > **frozen sender**. Use `bcm_live.py` as the healthy BCM.
 
