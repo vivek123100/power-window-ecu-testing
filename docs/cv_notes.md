@@ -2,7 +2,63 @@
 
 Ready-to-use CV text, updated after each milestone. Copy the latest version into your CV.
 
-_Last updated: 14 Nov 2026 (MIL, SIL, CAN/UDS, CR_01)_
+_Last updated: 16 Nov 2026 (MIL, SIL, CAN/UDS, CR_01, CR_04 E2E, PIL on Renode)_
+
+> **Rule for every milestone (Claude keeps this up to date):** add each task as a bullet in the
+> bullet bank below: **what I did → problem I hit → how I solved it → measurable result**, plus new
+> ATS keywords. Only things really done in this project, nothing invented. The final CV is written
+> only when I ask for it.
+
+## 10-second summary (top of CV / profile)
+
+Automotive engineer focused on **ECU software testing**. Built a complete verification project for a power
+window ECU along the **V-model: MIL → SIL → PIL**, with **CAN, UDS diagnostics, E2E protection**, back-to-back
+testing, **96 % code coverage, MISRA C:2012** and **CI (GitHub Actions)**: 103 automated tests, 11 defects
+found and fixed, 2 change requests handled end to end.
+
+## Bullet bank: problem → action → result (pick the best 5–7 for the CV)
+
+**Requirements and design**
+- Wrote 18 testable requirements and 68 test cases with full traceability; found an untestable requirement in review (20 % reversal in 200 ms was physically impossible) and rewrote it.
+- Found missing fault handling in the pinch-reversal state with a requirement × state matrix; added transitions and a regression test.
+
+**MIL (MATLAB/Simulink/Stateflow)**
+- Built a Stateflow controller with a closed-loop plant model and an automated MIL harness (23 test cases, auto-generated report); testing exposed a safety defect: the window re-closed on a trapped hand → new state WAIT_RELEASE, 23/23 pass.
+
+**SIL (C99, Python/pytest)**
+- Implemented the controller in C99 and reused the MIL test cases in pytest (ctypes); a regression test caught a recovery bug that code review missed (one missing `!`: the window would restart by itself after a fault).
+- Back-to-back MIL vs. SIL every 10 ms on all signals: 100 % identical; found a power-on initialisation defect that all functional tests missed.
+- Raised code coverage from 81 % to 96 % lines / 97 % branches (gcov) with 14 targeted tests incl. sensor fault injection.
+- Found that the MISRA C:2012 check silently reported 0 findings (misconfigured tool); proved it with a known-bad file and fixed the configuration (tool qualification mindset).
+- Set up CI with quality gates (MISRA, 103 tests, back-to-back, coverage ≥ 90 %) on every push in GitHub Actions.
+
+**CAN, UDS, E2E**
+- Designed a DBC and a virtual CAN network (BCM, ECU, tester, logger); automated tests for cycle time, signal content and timeout boundaries (500 vs. 560 ms, detection 510 ms).
+- Implemented UDS (ISO 14229) over ISO-TP: 0x10, 0x22, 0x19, 0x14, 0x3E, negative responses, P2 timing; DTCs U0140-00, B1310-00, U0422-00.
+- Live testing on Linux SocketCAN (candump, cansend) revealed that a dead BCM went undetected while the window was idle → change request CR_01 with impact analysis, tests written first, model and code updated.
+- Scenario review: a frozen sender (frames on time, stale content) kept the window moving → CR_04: E2E AliveCounter check, new DTC, 15 tests; developed on a feature branch and merged via pull request with green CI.
+- Found a robustness bug during live testing: two ECUs on one bus crashed the ISO-TP receiver → receiver now drops bad frames, regression test added.
+
+**PIL (STM32, ARM)**
+- Cross-compiled the unchanged controller for an STM32F407 (Cortex-M4F, bare metal, own startup code and linker script, 2.4 KB flash) and ran all 103 SIL/CAN tests on the target in the Renode emulator: MIL vs. PIL 100 % identical; worst-case step time < 1 µs of the 10 ms budget.
+- Cut PIL runtime 12× (110 → 8 ms per step) by replacing UART busy-polling with a receive interrupt and WFI sleep; fixed the race condition before WFI.
+
+## ATS keywords (use the ones that match the job ad)
+
+**English:** ECU testing, software testing, test automation, V-model, MIL, SIL, PIL, HIL (in progress),
+requirements-based testing, test specification, traceability, back-to-back testing, regression testing,
+fault injection, boundary value analysis, code coverage, static analysis, MISRA C, CI/CD, GitHub Actions,
+MATLAB, Simulink, Stateflow, C, Python, pytest, embedded C, STM32, ARM Cortex-M, Renode, CAN, DBC,
+SocketCAN, UDS, ISO 14229, ISO-TP, ISO 15765, DTC, diagnostics, E2E protection, AUTOSAR concepts,
+ISO 26262 awareness, change management, Git, Linux
+
+**German (often in ads):** Steuergeräte-Test, Softwaretest, Testautomatisierung, Testspezifikation,
+Anforderungsanalyse, Rückverfolgbarkeit, Fehlerinjektion, Regressionstest, Diagnose (UDS), Fehlerspeicher,
+Embedded-Software, Restbussimulation (concept), funktionale Sicherheit (ISO 26262, Grundlagen)
+
+**Not used in this project (don't claim):** CANoe/CANalyzer, dSPACE, Vector tools, AUTOSAR stack, real HIL bench.
+Say instead: "open-source equivalents: python-can, SocketCAN, can-utils, Renode".
+
 
 ## Project entry (current version)
 
@@ -29,7 +85,6 @@ _Last updated: 14 Nov 2026 (MIL, SIL, CAN/UDS, CR_01)_
 - Handled a requirement change request (CR_01) through the full V-model: impact analysis (2 states, ~10 files, affected tests), REQ update incl. start-up rule, Stateflow and C changes, 6 new tests written first; 87 automated tests green, coverage 96 %.
 
 _Planned bullets (add when done):_
-- PIL: code verified on STM32, execution time measured.
 - HIL: real-time plant ↔ MCU over CAN, automated fault-injection tests.
 
 ## Skills line (current version)

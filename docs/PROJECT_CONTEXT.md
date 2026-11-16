@@ -10,6 +10,7 @@ _Last updated: 16 Nov 2026 (CR_04 done on branch, PR next)_
 - Automotive engineer, beginner–intermediate in testing theory.
 - Goal: learn automotive ECU testing (MIL, SIL, PIL, HIL, CAN, UDS) with free resources and build **one GitHub portfolio project** for my CV. Target: test engineer roles (HIL/SIL/test automation). Long term: maybe an automotive testing startup in India (EV/BMS focus).
 - Time: ~8–10 h/week. Project expected done ~March 2027.
+- **CV material:** at every milestone, add bullets (task → problem → solution → measurable result) and ATS keywords to `docs/cv_notes.md`. Write the actual CV only when I ask.
 - **How I like to learn:** hands-on, short explanations, see things working. Long paper exercises get boring; mix theory with building. Explain errors step by step; give exact commands.
 
 ## 2. My setup
