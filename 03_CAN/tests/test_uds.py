@@ -101,3 +101,19 @@ def test_response_time_p2(ctrl):
     for t_req, req, t_resp, resp in tester.log:
         first = min(t for t, i, d in tr.frames if i == uds.RESP_ID and t >= t_req - 1e-9)
         assert first - t_req <= 0.05, f"{req.hex(' ')}: response after {(first - t_req) * 1000:.0f} ms"
+
+
+def test_TC_68_isotp_unexpected_frames_do_not_crash():
+    """TC_68: a duplicate or unexpected Consecutive Frame (e.g. two ECUs answering on
+    0x7E8) is dropped, not a crash; the tester ignores frames it did not ask for.
+    Found live on vcan0 with two run_live.py processes (ID conflict)."""
+    rx = uds.IsoTpReceiver()
+    ff = bytes.fromhex("100B590209C14000")
+    cf = bytes.fromhex("2108C4220008AAAA")
+    assert rx.feed(ff) == ("send_fc", None)
+    assert rx.feed(cf)[0] == "done"
+    assert rx.feed(cf) == ("error", None)          # same CF again: dropped
+    assert rx.errors == 1
+    assert rx.feed(ff) == ("send_fc", None)        # next message works again
+    assert rx.feed(cf)[0] == "done"
+    assert uds.Tester([]).step(0.0, [cf, ff]) == []  # unsolicited: ignored

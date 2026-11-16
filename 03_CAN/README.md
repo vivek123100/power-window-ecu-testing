@@ -10,7 +10,9 @@ a virtual 4-node network, automated CAN and UDS tests, and a live demo on Linux 
 | `sim/uds.py` | UDS server (in the ECU) and tester, ISO-TP framing by hand |
 | `sim/run_demo.py` | Demo: lost switch message → ERROR after 510 ms |
 | `sim/run_uds_demo.py` | Demo: read SW version, read and clear DTCs, frame by frame |
-| `sim/run_live.py` | Live demo on SocketCAN `vcan0`, I play BCM and tester |
+| `sim/run_live.py` | Live demo on SocketCAN `vcan0`: the ECU + window model (obstacle commands) |
+| `sim/bcm_live.py` | Live BCM with a real AliveCounter (hold, timed hold, freeze, cut wire) |
+| `LIVE_DEMO.md` | Step-by-step guide for the 4-terminal live demo |
 | `tests/test_can.py` | 8 CAN tests (cycle time, content, timeout boundary, DBC conformance) |
 | `tests/test_uds.py` | 13 UDS tests (services, DTCs, negative responses, P2 timing) |
 
@@ -93,45 +95,20 @@ The tests use python-can's in-process virtual bus, so they are repeatable and ru
 
 ## Live demo on SocketCAN
 
-**Setup** (once; again after every WSL restart):
-```bash
-sudo modprobe vcan
-sudo ip link add dev vcan0 type vcan      # "File exists" = already there, fine
-sudo ip link set up vcan0
-ip link show vcan0                        # must show UP
-```
+Full guide with setup, all commands for the 4 terminals, demos and troubleshooting:
+**[LIVE_DEMO.md](LIVE_DEMO.md)**
 
 | Terminal | Role | Command |
 |---|---|---|
-| 1 | ECU | `CAN_INTERFACE=socketcan python3 03_CAN/sim/run_live.py 600` |
-| 2 | Bus monitor | `candump -ta vcan0` (diagnostics only: `candump -ta vcan0,7E0:7F0`) |
-| 3 | Me: BCM + tester | `cangen` / `cansend` – these never print anything |
+| 1 | ECU + window model (`p 70` = hand at 70 %) | `CAN_INTERFACE=socketcan python3 03_CAN/sim/run_live.py 1800` |
+| 2 | Bus monitor | `candump -ta vcan0` |
+| 3 | BCM = door switch (`u` `d` `r` `u 0.8` `f` `s`) | `python3 03_CAN/sim/bcm_live.py` |
+| 4 | Diagnostic tester | `cansend vcan0 7E0#031902FFAAAAAAAA` (read DTCs) |
 
-### Script
+Demos: partial opening, anti-pinch, frozen sender (CR_04), lost message, repair → clear → verify.
 
-| # | Do (Terminal 3) | Expect | Why |
-|---|---|---|---|
-| 1 | `cangen vcan0 -I 200 -L 2 -D 0200 -g 20` | T1: `MOVING_DOWN`; T2: 210 byte 0 falls | Down pressed, REQ_02 |
-| 2 | Ctrl+C within ~1.5 s | T1: `ERROR ... DTC timeout 1` after ~0.5 s; T2: 210 `xx 08 05 00` | Message lost while moving, REQ_09 |
-| 3 | `cansend vcan0 7E0#031902FFAAAAAAAA` | T2: `7E8 07 59 02 09 C1 40 00 08` | Read DTCs → U0140-00 confirmed |
-| 4 | `cansend vcan0 7E0#0414FFFFFFAAAAAA` | T2: `7E8 01 54`; T1: `DTC timeout 0` | Clear DTCs, REQ_16 |
-| 5 | `cangen vcan0 -I 200 -L 2 -D 0000 -g 20` | T1: `IDLE` | Leaving ERROR needs both switches released |
-| 6 | `cansend vcan0 7E0#0322F195AAAAAAAA` | T2: `7E8 10 0B 62 F1 95 50 57 2D`, then nothing | First Frame, ECU waits |
-| 7 | `cansend vcan0 7E0#3000000000000000` | T2: `7E8 21 31 2E 30 2E 30 AA AA` | Flow Control → rest of "PW-1.0.0" |
-| 8 | `cansend vcan0 7E0#0322123400000000` | T2: `7E8 03 7F 22 31` | Unknown DID → negative response |
-
-`cangen` options: `-I` ID, `-L` length, `-D` data, `-g` gap in ms.
-
-### Troubleshooting
-
-| Problem | Fix |
-|---|---|
-| Terminal 3 prints nothing | Normal. Look at Terminals 1 and 2 |
-| ECU reacts to nothing | Its run time is over: restart `run_live.py` |
-| `Network is down` / `No such device` | Run the setup again (`vcan0` gone after WSL restart) |
-| Up → Release gives ERROR | The gap between two `cangen` runs was > 500 ms; correct behaviour |
-| `0060` does nothing | Byte 1 is the AliveCounter; only byte 0 bits 0–1 are switches |
-| First Frame but no rest | Send the Flow Control `7E0#3000000000000000` |
+> Since CR_04, `cangen` with fixed data repeats the same AliveCounter, so the ECU treats it as a
+> **frozen sender**. Use `bcm_live.py` as the healthy BCM.
 
 ---
 

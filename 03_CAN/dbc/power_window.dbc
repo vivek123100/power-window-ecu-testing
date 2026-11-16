@@ -25,6 +25,7 @@ BO_ 528 DCU_WindowStatus: 4 DCU
  SG_ PinchFlag : 10|1@1+ (1,0) [0|1] "" BCM
  SG_ DTC_SwitchTimeout : 11|1@1+ (1,0) [0|1] "" BCM
  SG_ DTC_MotorOverrun : 12|1@1+ (1,0) [0|1] "" BCM
+ SG_ DTC_SwitchInvalid : 13|1@1+ (1,0) [0|1] "" BCM
  SG_ CtrlState : 16|3@1+ (1,0) [0|5] "" BCM
 
 
@@ -35,6 +36,7 @@ CM_ BO_ 528 "Window status from the DCU, every 100 ms (REQ_12)";
 CM_ SG_ 512 AliveCounter "Increments 0..15 with every message, so the receiver can detect frozen senders";
 CM_ SG_ 528 WindowPos "Window position, 0 = fully open, 100 = fully closed";
 CM_ SG_ 528 CtrlState "Active state of the controller (for testing and diagnosis)";
+CM_ SG_ 528 DTC_SwitchInvalid "U0422-00 stored: 0x200 frames with a frozen AliveCounter (CR_04)";
 
 BA_DEF_ BO_ "GenMsgCycleTime" INT 0 10000;
 BA_DEF_DEF_ "GenMsgCycleTime" 0;

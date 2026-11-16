@@ -7,7 +7,7 @@ echo "=== 1/4 Static analysis (cppcheck + MISRA) ==="
 mkdir -p reports/static
 cppcheck --addon=misra --enable=style --std=c99 --suppress=missingIncludeSystem \
   --suppressions-list=02_SIL/misra_suppressions.txt \
-  --error-exitcode=1 -I 02_SIL/src 02_SIL/src/window_ctrl.c 2>&1 | tee reports/static/misra.txt
+  --error-exitcode=1 -I 02_SIL/src 02_SIL/src/window_ctrl.c 02_SIL/src/e2e_counter.c 2>&1 | tee reports/static/misra.txt
 
 echo "=== 2/4 SIL + CAN + UDS tests + back-to-back (with coverage) ==="
 rm -rf build

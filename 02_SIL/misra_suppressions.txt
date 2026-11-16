@@ -1,1 +1,2 @@
 misra-c2012-8.7:02_SIL/src/window_ctrl.c
+misra-c2012-8.7:02_SIL/src/e2e_counter.c
