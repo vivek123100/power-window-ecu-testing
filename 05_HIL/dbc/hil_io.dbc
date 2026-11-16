@@ -17,15 +17,19 @@ BO_ 768 HIL_Sensors: 6 HIL
  SG_ HIL_MotorCurrent : 16|16@1+ (0.01,0) [0|40] "A" DCU
  SG_ HIL_Vbat : 32|16@1+ (0.01,0) [0|20] "V" DCU
 
-BO_ 769 HIL_Actuators: 4 DCU
+BO_ 769 HIL_Actuators: 6 DCU
  SG_ HIL_MotorCmd : 0|8@1- (1,0) [-1|1] "" HIL
  SG_ HIL_CtrlState : 8|8@1+ (1,0) [0|5] "" HIL
  SG_ HIL_StepTicks : 16|16@1+ (1,0) [0|65535] "ticks" HIL
+ SG_ HIL_RxOverruns : 32|8@1+ (1,0) [0|255] "" HIL
+ SG_ HIL_SensorTimeout : 40|1@1+ (1,0) [0|1] "" HIL
 
 
 CM_ BU_ HIL "HIL bench (PC): plant model, sensor and actuator emulation";
 CM_ BO_ 768 "Replaces the analog inputs of a real HIL bench: position sensor, current measurement, battery voltage. Every 10 ms";
 CM_ BO_ 769 "Replaces the H-bridge output measurement of a real HIL bench. Every 10 ms";
+CM_ SG_ 769 HIL_RxOverruns "CAN RX FIFO overruns counted by the ECU (lost frames)";
+CM_ SG_ 769 HIL_SensorTimeout "1 = no HIL_Sensors frame for more than 100 ms: ECU in safe state (motor off)";
 CM_ SG_ 769 HIL_StepTicks "Execution time of WindowCtrl_Step on the ECU (SysTick ticks, 72 MHz in Renode)";
 
 BA_DEF_ BO_ "GenMsgCycleTime" INT 0 10000;

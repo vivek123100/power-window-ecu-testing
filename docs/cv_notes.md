@@ -43,13 +43,17 @@ HIL tests on embedded firmware), 11 defects found and fixed, 2 change requests h
 - Cross-compiled the unchanged controller for an STM32F407 (Cortex-M4F, bare metal, own startup code and linker script, 2.4 KB flash) and ran all 103 SIL/CAN tests on the target in the Renode emulator: MIL vs. PIL 100 % identical; worst-case step time < 1 µs of the 10 ms budget.
 - Cut PIL runtime 12× (110 → 8 ms per step) by replacing UART busy-polling with a receive interrupt and WFI sleep; fixed the race condition before WFI.
 
+**Verification & validation**
+- Ran an independent V&V review of the whole project: re-ran every level from a fresh clone, audited traceability by script and used **mutation testing** (21 planted bugs): 16 caught at first; the 5 survivors exposed real gaps (untested exact boundaries, a pinch-zone limit that could shift unnoticed, "clear all DTCs" only tested for one DTC). Closed them with 7 new tests; branch coverage 94.8 → 96.7 %.
+- Found dead code left by an earlier change request (always-true condition, MISRA C:2012 Rule 14.3) that the MISRA tool did not report; and validated the requirements against FMVSS 118: documented that a current threshold is not yet a proven force limit (< 100 N) and that the reversal distance must be specified in mm.
+
 **HIL (real-time, CAN)**
 - Built a mini-HIL bench: the ECU firmware (own bxCAN driver, 1 ms scheduler, UDS + ISO-TP in C, 3.9 KB) runs as a real-time node on SocketCAN; the PC runs plant, BCM and diagnostic tester in a 10 ms loop. 12 automated tests measured on the bus: reaction ≤ 50 ms, timeout detection 500–520 ms, status cycle 100 ± 10 ms, pinch, frozen sender, UDS read/clear incl. multi-frame – 12 / 12 pass.
 - Found that the emulator stalled up to 183 ms on a loaded PC, which made timing tests fail randomly; added a test-system health check that repeats or reports a run as inconclusive instead of blaming the ECU.
 
 ## ATS keywords (use the ones that match the job ad)
 
-**English:** ECU testing, PIL testing, cross-compilation, bare-metal firmware, linker script, interrupts, software testing, test automation, V-model, MIL, SIL, PIL, HIL, real-time testing, CAN driver, embedded UDS,
+**English:** ECU testing, verification and validation (V&V), mutation testing, PIL testing, cross-compilation, bare-metal firmware, linker script, interrupts, software testing, test automation, V-model, MIL, SIL, PIL, HIL, real-time testing, CAN driver, embedded UDS,
 requirements-based testing, test specification, traceability, back-to-back testing, regression testing,
 fault injection, boundary value analysis, code coverage, static analysis, MISRA C, CI/CD, GitHub Actions,
 MATLAB, Simulink, Stateflow, C, Python, pytest, embedded C, STM32, ARM Cortex-M, Renode, CAN, DBC,

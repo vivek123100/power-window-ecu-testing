@@ -91,13 +91,15 @@ void WindowCtrl_Step(const WindowInputs_t *in, WindowOutputs_t *out)
                 s_out.dtc_switch_timeout = true;
                 enter_state(WS_ERROR);
             }
+            /* CR_05 (V&V F-01): the message age is already checked above, so it is not
+             * repeated here (it was always true = dead code, MISRA C:2012 Rule 14.3). */
             else if (in->sw_up && !in->sw_down && (in->pos_pct < POS_CLOSED_PCT) &&
-                voltage_ok(in->vbat_v) && msg_ok(in->sw_msg_age_ms))
+                     voltage_ok(in->vbat_v))
             {
                 enter_state(WS_MOVING_UP);                       /* REQ_01 */
             }
             else if (in->sw_down && !in->sw_up && (in->pos_pct > POS_OPEN_PCT) &&
-                     voltage_ok(in->vbat_v) && msg_ok(in->sw_msg_age_ms))
+                     voltage_ok(in->vbat_v))
             {
                 enter_state(WS_MOVING_DOWN);                     /* REQ_02 */
             }

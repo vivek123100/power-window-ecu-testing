@@ -127,8 +127,9 @@ def test_TC_77_execution_time_budget(hil):
 def test_TC_78_read_and_clear_dtc_on_target(hil):
     """REQ_15/16: lost switch message -> U0140-00 readable by UDS, 14 FF FF FF clears it"""
     def check(b):
+        assert not b.uds_timeouts(), f"no answer to {[r.hex(' ') for _, r in b.uds_timeouts()]}"
         reads = [r for r in b.uds_log if r[1] == READ_DTCS]
-        assert len(reads) == 2, f"answers: {[r[3].hex(' ') for r in b.uds_log]}"
+        assert len(reads) == 2, f"answers: {[(r[3] or b'').hex(' ') for r in b.uds_log]}"
         assert dtc_names(reads[0][3]) == ["U0140-00"]
         assert b.uds_response(CLEAR_DTCS) == bytes([0x54])
         assert dtc_names(reads[1][3]) == []
@@ -165,3 +166,18 @@ def test_TC_80_uds_services_and_p2(hil):
             b.require_realtime(t_req, t_first + 0.01)
             assert (t_first - t_req) * 1000 <= 50, f"{req.hex(' ')}: P2 {(t_first - t_req) * 1000:.0f} ms"
     hil(check, 2.5, diag=[(1.0 + 0.2 * i, r) for i, r in enumerate(requests)])
+
+
+def test_TC_87_sensor_frame_lost_safe_state(hil):
+    """V&V F-09 (HIL firmware robustness): sensor frames 0x300 stop at 1.5 s while closing ->
+    the ECU must not drive on old values: motor off within 150 ms, sensor-timeout flag set"""
+    def check(b):
+        t_last = max(t for t, i, d in b.sent if i == 0x300 and t < 1.5)
+        b.require_realtime(t_last, t_last + 0.2)
+        t_stop = b.first(b.actuators(), lambda r: r[1] == 0, t_last)[0]
+        assert (t_stop - t_last) * 1000 <= 150, f"motor still on {(t_stop - t_last) * 1000:.0f} ms"
+        flags = [d[5] for t, d in b.of(0x301, t_last + 0.15) if len(d) >= 6]
+        assert flags and flags[0] & 1, "sensor-timeout flag not set in 0x301"
+        assert b.rx_overruns() == 0, f"ECU lost {b.rx_overruns()} CAN frames"
+    hil(check, 2.5, sw_up=((0, 0), (0.5, 1)), init_pos=10.0, sensors_silent=(1.5, 99.0))
+

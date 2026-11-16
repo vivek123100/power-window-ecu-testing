@@ -38,6 +38,7 @@ import pil_target   # noqa: E402
 ID_SWITCH, ID_STATUS, ID_SENSORS, ID_ACTUATORS = 0x200, 0x210, 0x300, 0x301
 UDS_REQ, UDS_RESP = 0x7E0, 0x7E8
 FLOW_CONTROL = bytes([0x30, 0x00, 0x00]) + bytes([0xAA] * 5)   # continue, no limit, STmin 0
+UDS_TIMEOUT_S = 0.5     # tester gives up after P2* (no answer = lost request or dead ECU)
 TCP_PORT = 3457
 STATE = ["IDLE", "MOVING_UP", "MOVING_DOWN", "PINCH_REVERSE", "WAIT_RELEASE", "ERROR"]
 
@@ -178,7 +179,7 @@ class HilBench:
     def __init__(self, sw_up=((0, 0),), sw_down=((0, 0),), vbat=((0, 12.0),),
                  bcm=True, bcm_silent=None, bcm_frozen=None, init_pos=50.0,
                  obstacle_pos=None, stall_current=10.0, bus=None, ecu=True, verbose=False,
-                 diag=()):
+                 diag=(), sensors_silent=None):
         self.sw_up, self.sw_down, self.vbat = sw_up, sw_down, vbat
         self.bcm, self.bcm_silent, self.bcm_frozen = bcm, bcm_silent, bcm_frozen
         self.plant = sil_env.WindowPlant(init_pos, obstacle_pos is not None,
@@ -194,6 +195,7 @@ class HilBench:
         self._run, self._thread, self.proc, self.bus, self.t0 = False, None, None, None, None
         self.on_status = None       # optional callback(t, decoded 0x210)
         self.diag = sorted(diag)    # [(t, request bytes)] - UDS tester requests
+        self.sensors_silent = sensors_silent   # (t0, t1): no 0x300 frames (sensor wire cut)
         self.uds_log = []           # (t_request, request, t_first_response_frame, response)
         self._uds_cur = None        # [t_req, req, t_first, expected_len, buffer]
 
@@ -296,6 +298,10 @@ class HilBench:
                 return resp
         return None
 
+    def uds_timeouts(self):
+        """Requests that got no complete answer within UDS_TIMEOUT_S."""
+        return [(t, req) for t, req, t_first, resp in self.uds_log if resp is None]
+
     def _loop(self):
         k = 0
         while self._run:
@@ -308,10 +314,15 @@ class HilBench:
 
             pos, cur = self.plant.step(self.motor_cmd)    # 1. plant, 10 ms (latest motor command)
             vbat = float(_at(self.vbat, t, 12.0))
-            self._send(t, ID_SENSORS, struct.pack(        # 2. sensors to the ECU
-                "<HHH", int(round(pos * 100)), int(round(cur * 100)), int(round(vbat * 100))))
+            if not (self.sensors_silent and self.sensors_silent[0] <= t < self.sensors_silent[1]):
+                self._send(t, ID_SENSORS, struct.pack(    # 2. sensors to the ECU
+                    "<HHH", int(round(pos * 100)), int(round(cur * 100)), int(round(vbat * 100))))
 
-            if self._uds_cur is None and self.diag and self.diag[0][0] <= t:   # 4. tester
+            cur = self._uds_cur                           # 4. tester: timeout first
+            if cur is not None and t - cur[0] > UDS_TIMEOUT_S:
+                self.uds_log.append((cur[0], cur[1], cur[2], None))   # None = no (complete) answer
+                self._uds_cur = None
+            if self._uds_cur is None and self.diag and self.diag[0][0] <= t:
                 _, req = self.diag.pop(0)
                 req = bytes(req)
                 self._uds_cur = [t, req, None, 0, b""]
@@ -346,6 +357,10 @@ class HilBench:
 
     def first(self, rows, cond, t_from=0.0):
         return next((r for r in rows if r[0] >= t_from and cond(r)), None)
+
+    def rx_overruns(self):
+        """Lost CAN frames reported by the ECU (0x301 byte 4)."""
+        return max((d[4] for _, d in self.of(ID_ACTUATORS) if len(d) >= 5), default=0)
 
     def max_step_ticks(self):
         return max((r[3] for r in self.actuators()), default=0)

@@ -21,12 +21,17 @@ vehicle speed [km/h, via CAN], battery voltage [V]
 | REQ_11 | If Up and Down are both active at the same time, the motor shall stop. |
 | REQ_12 | The ECU shall send its status (position, motor state, pinch flag) on CAN every 100 ms. |
 | REQ_13 | After a pinch reversal, the ECU shall not drive the window up until the Up switch has been released and pressed again. |
-| REQ_14 | The pinch flag in the status message shall stay set until the Up switch is released.. |
+| REQ_14 | The pinch flag in the status message shall stay set until the Up switch is released. |
 | REQ_15 | The ECU shall support UDS diagnostics (ISO 14229) over ISO-TP on CAN IDs 0x7E0 (request) / 0x7E8 (response): 0x10 sessions 01/03, 0x22 DIDs F195 (software version) and 0100 (window position), 0x19 sub-function 02, 0x14, 0x3E. Unsupported requests shall get a negative response (7F). Responses shall start within P2 = 50 ms. | 
 | REQ_16 | UDS 0x14 FF FF FF shall clear all stored DTCs (U0140-00, B1310-00, U0422-00), both in the diagnostic memory and in the status message. |
 | REQ_17 | The ECU shall check the AliveCounter of every received BCM_WindowSwitch frame (0x200). A frame whose counter equals the counter of the last accepted frame shall be discarded: its switch values shall not be used and it shall not count as a received message for REQ_09. The first frame after start-up and every changed counter (including the wrap 15 → 0) shall be accepted. _(CR_04)_ |
 | REQ_18 | If 3 consecutive 0x200 frames are discarded (REQ_17), the ECU shall store DTC_SWITCH_INVALID (U0422-00), shown in DCU_WindowStatus (0x210 byte 1 bit 5) and reported by UDS 0x19. The DTC shall stay stored after fresh frames return, until cleared with UDS 0x14. _(CR_04)_ |
 
+
+**Timing measurement points** (V&V F-11): a reaction time ("within 50 ms", "within 200 ms") is measured from the moment
+the input reaches the ECU's interface to the first output that shows the reaction. MIL/SIL/PIL: from the input step to
+the output step of the controller. CAN/HIL: from the switch or sensor frame on the bus to the first motor-command or
+status frame on the bus.
 
 ## Open points and out-of-scope items
 
@@ -39,6 +44,9 @@ vehicle speed [km/h, via CAN], battery voltage [V]
 | OP_05 | Out of scope | No emergency behaviour: the ECU has no crash input, so after an accident or fire the window stays where it is. Real cars react to a crash message from the airbag ECU (unlock doors, hazard lights, sometimes open windows); this needs E2E-protected CAN signals and ISO 26262 safety analysis (false trigger at speed) | Not implemented; possible future CR_03 |
 | OP_06 | Improvement | Start-up delay for timeout monitoring (option A + C), to avoid false DTCs when the BCM wakes up slower than 500 ms | Open |
 | OP_07 | Improvement | The E2E check covers only the AliveCounter. There is no CRC or data ID (as in an AUTOSAR E2E profile), so a frame with corrupted content but a moving counter is still accepted | Open |
+| OP_08 | Validation (V&V F-04) | REQ_05 detects a pinch by motor current (> 8 A). Regulations limit the squeezing **force** (FMVSS 118 S5.1: < 100 N on test rods of 4–200 mm). The 8 A ↔ 100 N relation is an assumption; current also depends on battery voltage and temperature | Open – needs force measurement on real hardware, voltage-compensated threshold |
+| OP_09 | Validation (V&V F-05) | REQ_06 asks for ≥ 20 % reversal. FMVSS 118 S5.2 needs: back to the start position, or ≥ 125 mm, or a 200 mm opening. 20 % is ≥ 125 mm only for a glass travel of ≥ 625 mm | Open – specify in mm once the glass travel is known |
+| OP_10 | Validation (V&V F-06) | No block detection above 96 % (anti-pinch is off at the seal, correctly): a motor stalled at 97–99 % runs at stall current until the 8 s overrun (REQ_10). Real ECUs stop on a block within a few hundred ms | Open – candidate requirement: block detection (high current + position not changing) in every zone |
 
 ## Change requests
 
@@ -46,3 +54,4 @@ vehicle speed [km/h, via CAN], battery voltage [V]
 |---|---|---|---|---|
 | CR_01 | 14 Nov 2026 | Switch message timeout detected in every state, detection window 500–520 ms, age counts from power-on | REQ_09 | TC_32 (changed), TC_49–TC_53 |
 | CR_04 | 16 Nov 2026 | E2E AliveCounter check on 0x200, new DTC U0422-00 (frozen sender) | REQ_16 (extended), REQ_17, REQ_18 | TC_54–TC_67 |
+| CR_05 | 17 Nov 2026 | V&V review fixes: dead code removed in IDLE (no behaviour change), 7 new tests for gaps found by mutation testing, HIL firmware sensor timeout + RX overrun counter + CAN RX interrupt/queue, timing measurement points defined, OP_08–OP_10 | – (REQ_14 typo) | TC_81–TC_87 |
