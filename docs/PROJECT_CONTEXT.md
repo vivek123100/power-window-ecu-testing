@@ -4,7 +4,7 @@
 > *"I'm continuing my automotive testing learning project. Here is my project context. Continue from 'Next steps'."*
 > Update this file at every milestone (or ask Claude to update it).
 
-_Last updated: 17 Nov 2026 (project on hold: complete on emulated target; next: CV, then re-learning)_
+_Last updated: 17 Nov 2026 (CV done; next: re-learn the project step by step)_
 
 ## 1. Who I am and what I want
 - Automotive engineer, beginner–intermediate in testing theory.
@@ -62,6 +62,8 @@ Bugs found so far: missing fault handling in PINCH_REVERSE (→ TC_20), repeated
 - Parked for later: Jira (free) + Xray trial; Polarion/codeBeamer/Jama trial; Doorstop or sphinx-needs; seat heater Stateflow exercise.
 
 ## 5. Next steps
+- **17 Nov 2026 – CV DONE.** Final files are my own Word versions (2 pages): *Lebenslauf* (DE) + *CV* (EN), and *Kompetenzprofil* (DE) + *Skills Profile* (EN) as attachment. Decisions: availability **from January 2027** in my latest Word files (my old CV said March 2027 – still to confirm); employer = **Patel Hyundai, Bhavnagar** (dealership); bachelor grade **1,6 (CGPA 8,76/10)**; CV section "Fachkenntnisse / Key Skills" = 2-line keyword block for ATS; Kompetenzprofil = Profil · Kernkompetenzen (abilities + proof) · Technische Kenntnisse (tools + level: Python/C advanced, C++ basic) · Arbeitsweise. Editable drafts as Claude docs: EN CV https://claude.ai/artifact/HYDQJCAd8kTSCvKh24mowX · DE https://claude.ai/artifact/MrunsE1XGaWRaVvJqkzYmP · Kompetenzprofil https://claude.ai/artifact/JNSfqRHeanPL8DWfhumnbp · Skills Profile https://claude.ai/artifact/7LEbyH4KXvLRgLuvH4nRxq (the Word files are newer). Next CV step: tailor keywords per job ad.
+- **NEXT: re-learn the whole project step by step** (my request), level by level: requirements → MIL → SIL → CAN/UDS/E2E → PIL → HIL → V&V. Hands-on, short explanations, exact commands, I run things myself; check my understanding with small questions, not long paper exercises.
 - **17 Nov 2026 – project ON HOLD (complete on the emulated target, PR #4 merged).** Real hardware PIL/HIL postponed, not cancelled: Nucleo-G431RB/G474RE (~€15–25) + CAN transceiver (~€5) + CANable 2.0 (~€30); changes needed: pyserial link instead of TCP, real clock + DWT timing, FDCAN driver (G4) instead of bxCAN, real `can0`. Now: CV (internship/Werkstudent, English + German), then I re-learn the project step by step.
 - **CR_01 DONE (14 Nov 2026):** REQ_09 timeout now detected in every state (new transitions IDLE→ERROR and WAIT_RELEASE→ERROR, priority 1, in Stateflow and `window_ctrl.c`); option A start-up rule (message age counts from power-on, `can_network.py` `last_rx_t = 0.0`); tests TC_32 updated, TC_49–TC_53 added; MIL 23/23, `bash run_all.sh` 87 passed / 1 skipped, coverage 96 %. Since CR_01, `run_live.py` stores U0140-00 if `cangen` doesn't start within 0.5 s.
 - My computer's repo folder is connected to the chat: Claude can write files directly into it.
